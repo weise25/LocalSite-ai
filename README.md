@@ -1,5 +1,8 @@
 > **What's new?** See the [Changelog](./CHANGELOG.md) for details.
 
+> [!CAUTION]
+> This project is developed and maintained using **Agentic Engineering** — with the assistance of **Claude Opus 4.6** by Anthropic. Code, architecture decisions, and documentation in this repository are largely produced through AI-assisted development workflows.
+
 A modern web application that uses AI to generate HTML, CSS, and JavaScript code based on natural language prompts. Simply describe what you want to build, and the AI will create a complete, self-contained web page for you.
 
 ## Features
