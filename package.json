@@ -1,6 +1,6 @@
 {
   "name": "localsite-ai",
-  "version": "0.4.0",
+  "version": "0.5.2",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -40,14 +40,13 @@
     "@radix-ui/react-toggle": "1.1.1",
     "@radix-ui/react-toggle-group": "1.1.1",
     "@radix-ui/react-tooltip": "1.1.6",
-    "@types/lodash": "^4.17.16",
     "ai": "^5.0.116",
     "ai-sdk-ollama": "^2.2.0",
     "autoprefixer": "^10.4.20",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "1.0.4",
-    "lodash": "^4.17.21",
+    "lodash.debounce": "^4.0.8",
     "lucide-react": "^0.454.0",
     "next": "^15.2.6",
     "next-themes": "^0.4.4",
@@ -61,6 +60,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@types/lodash.debounce": "^4.0.9",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",

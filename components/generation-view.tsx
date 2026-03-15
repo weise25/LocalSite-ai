@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
-import { debounce } from "lodash"
+import debounce from "lodash.debounce"
 import { Badge } from "@/components/ui/badge"
 import { Download, RefreshCw } from "lucide-react"
 import { ThinkingIndicator } from "@/components/thinking-indicator"
@@ -21,6 +21,51 @@ import {
 } from "@/components/ui/resizable"
 
 import { CodePanel, PreviewPanel } from "@/components/generation-panels"
+
+const darkModeStyle = `
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+    html, body {
+      background-color: #121212;
+      color: #ffffff;
+      min-height: 100%;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+    }
+    /* Smooth transition for body background */
+    body {
+      transition: background-color 0.2s ease;
+    }
+  </style>
+`;
+
+function prepareHtmlContent(code: string): string {
+  let result = "";
+
+  if (code.includes('<head>')) {
+    result = code.replace('<head>', `<head>${darkModeStyle}`);
+  } else if (code.includes('<html>')) {
+    result = code.replace('<html>', `<html><head>${darkModeStyle}</head>`);
+  } else {
+    result = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          ${darkModeStyle}
+        </head>
+        <body>
+          ${code}
+        </body>
+      </html>
+    `;
+  }
+
+  return result;
+}
 
 interface GenerationViewProps {
   prompt: string
@@ -61,58 +106,13 @@ export function GenerationView({
 
   const prevContentRef = useRef<string>("");
 
-  const prepareHtmlContent = (code: string): string => {
-    const darkModeStyle = `
-      <style>
-        :root {
-          color-scheme: dark;
-        }
-        html, body {
-          background-color: #121212;
-          color: #ffffff;
-          min-height: 100%;
-        }
-        body {
-          margin: 0;
-          padding: 0;
-        }
-        /* Smooth transition for body background */
-        body {
-          transition: background-color 0.2s ease;
-        }
-      </style>
-    `;
-
-    let result = "";
-
-    if (code.includes('<head>')) {
-      result = code.replace('<head>', `<head>${darkModeStyle}`);
-    } else if (code.includes('<html>')) {
-      result = code.replace('<html>', `<html><head>${darkModeStyle}</head>`);
-    } else {
-      result = `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            ${darkModeStyle}
-          </head>
-          <body>
-            ${code}
-          </body>
-        </html>
-      `;
-    }
-
-    return result;
-  };
-
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const debouncedUpdatePreview = useCallback(
     debounce((code: string) => {
       const preparedHtml = prepareHtmlContent(code);
       prevContentRef.current = preparedHtml;
       setPreviewContent(preparedHtml);
-    }, 50),
+    }, 200),
     []
   );
 
@@ -284,12 +284,13 @@ export function GenerationView({
       {/* Hauptinhalt - Flexibler und responsiver mit Resizable Panels */}
       <div className="flex flex-1 overflow-hidden">
         {/* Mobile View */}
-        <div className="md:hidden w-full flex flex-col">
-          {activeTab === "code" ? (
+        <div className="md:hidden w-full h-full flex flex-col">
+          <div className={`h-full flex-col ${activeTab === "code" ? "flex" : "hidden"}`}>
             <CodePanel {...codePanelProps} />
-          ) : (
+          </div>
+          <div className={`h-full flex-col ${activeTab === "preview" ? "flex" : "hidden"}`}>
             <PreviewPanel {...previewPanelProps} />
-          )}
+          </div>
         </div>
 
         {/* Desktop View - Resizable Panels */}

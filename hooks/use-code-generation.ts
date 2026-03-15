@@ -82,10 +82,11 @@ export function useCodeGeneration() {
                 throw new Error('Stream could not be read')
             }
 
-            let codeBuffer = ""
-            let reasoningBuffer = ""
+            const codeChunks: string[] = []
+            const reasoningChunks: string[] = []
             let lineBuffer = ""
             let hasReceivedReasoning = false
+            const decoder = new TextDecoder()
 
             while (true) {
                 const { done, value } = await reader.read()
@@ -94,13 +95,15 @@ export function useCodeGeneration() {
                     break
                 }
 
-                const chunk = new TextDecoder().decode(value)
-                lineBuffer += chunk
+                lineBuffer += decoder.decode(value, { stream: true })
 
                 // Process complete lines (NDJSON format)
                 const lines = lineBuffer.split('\n')
                 // Keep the last incomplete line in the buffer
                 lineBuffer = lines.pop() || ""
+
+                let codeUpdated = false
+                let reasoningUpdated = false
 
                 for (const line of lines) {
                     if (!line.trim()) continue
@@ -109,21 +112,29 @@ export function useCodeGeneration() {
                         const part: StreamPart = JSON.parse(line)
 
                         if (part.type === 'text') {
-                            codeBuffer += part.content
-                            setGeneratedCode(codeBuffer.replace(/^```html\n/, '').replace(/```$/, ''))
+                            codeChunks.push(part.content)
+                            codeUpdated = true
                         } else if (part.type === 'reasoning') {
                             if (!hasReceivedReasoning) {
                                 setIsThinking(true)
                                 hasReceivedReasoning = true
                             }
-                            reasoningBuffer += part.content
-                            setThinkingOutput(reasoningBuffer)
+                            reasoningChunks.push(part.content)
+                            reasoningUpdated = true
                         }
                     } catch (parseError) {
                         // If JSON parse fails, it might be legacy plain text format
                         // Try to handle it gracefully
                         console.warn('Failed to parse stream part:', line, parseError)
                     }
+                }
+
+                // Batch state updates once per reader.read() call
+                if (codeUpdated) {
+                    setGeneratedCode(codeChunks.join('').replace(/^```html\n/, '').replace(/```$/, ''))
+                }
+                if (reasoningUpdated) {
+                    setThinkingOutput(reasoningChunks.join(''))
                 }
             }
 
@@ -132,11 +143,11 @@ export function useCodeGeneration() {
                 try {
                     const part: StreamPart = JSON.parse(lineBuffer)
                     if (part.type === 'text') {
-                        codeBuffer += part.content
-                        setGeneratedCode(codeBuffer.replace(/^```html\n/, '').replace(/```$/, ''))
+                        codeChunks.push(part.content)
+                        setGeneratedCode(codeChunks.join('').replace(/^```html\n/, '').replace(/```$/, ''))
                     } else if (part.type === 'reasoning') {
-                        reasoningBuffer += part.content
-                        setThinkingOutput(reasoningBuffer)
+                        reasoningChunks.push(part.content)
+                        setThinkingOutput(reasoningChunks.join(''))
                     }
                 } catch {
                     // Ignore parse errors for incomplete lines

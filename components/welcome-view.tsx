@@ -1,12 +1,14 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, memo, useMemo, useCallback } from "react"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-// Import only the icons that are actually used
-import { Loader2 } from "lucide-react"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { Loader2, ChevronsUpDown, Check } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { ProviderSelector } from "@/components/provider-selector"
 
@@ -14,6 +16,119 @@ interface Model {
   id: string
   name: string
 }
+
+// -----------------------------------------------------------------------------
+// ModelSelector – memoized so it does NOT re-render on prompt changes.
+// Uses Popover + Command (Combobox pattern) so the search input stays fixed
+// at the top and keeps focus while typing.
+// -----------------------------------------------------------------------------
+
+interface ModelSelectorProps {
+  models: Model[]
+  selectedModel: string
+  setSelectedModel: (value: string) => void
+  isLoadingModels: boolean
+  selectedProvider: string
+}
+
+const ModelSelector = memo(function ModelSelector({
+  models,
+  selectedModel,
+  setSelectedModel,
+  isLoadingModels,
+  selectedProvider,
+}: ModelSelectorProps) {
+  const [open, setOpen] = useState(false)
+
+  const selectedModelName = useMemo(
+    () => models.find((m) => m.id === selectedModel)?.name ?? null,
+    [models, selectedModel]
+  )
+
+  // Filter by both model name and id so searching either works
+  const commandFilter = useCallback(
+    (value: string, search: string) => {
+      const model = models.find((m) => m.id === value)
+      if (!model) return 0
+      const haystack = `${model.name} ${model.id}`.toLowerCase()
+      return haystack.includes(search.toLowerCase()) ? 1 : 0
+    },
+    [models]
+  )
+
+  const isDisabled = !selectedProvider || isLoadingModels
+
+  return (
+    <div className="w-full mb-4">
+      <label className="block text-sm font-medium text-gray-300 mb-2">SELECT MODEL</label>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            disabled={isDisabled}
+            className="w-full justify-between bg-gray-900/80 border-gray-800 hover:bg-gray-900/80 hover:border-gray-800 hover:text-white text-white font-normal h-10 px-3"
+          >
+            {isLoadingModels ? (
+              <span className="flex items-center gap-2 text-gray-400">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Loading models...
+              </span>
+            ) : selectedModelName ? (
+              <span className="truncate">{selectedModelName}</span>
+            ) : (
+              <span className="text-gray-500">
+                {selectedProvider ? "Choose a model..." : "Select a provider first"}
+              </span>
+            )}
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          className="p-0 bg-gray-900 border-gray-800 text-white"
+          style={{ width: "var(--radix-popover-trigger-width)" }}
+          align="start"
+        >
+          <Command filter={commandFilter} className="bg-gray-900">
+            {models.length > 10 && (
+              <CommandInput
+                placeholder="Search models..."
+                className="text-white placeholder:text-gray-500 border-gray-800"
+              />
+            )}
+            <CommandList className="max-h-64">
+              <CommandEmpty className="text-gray-400 py-4 text-center text-sm">
+                No models found
+              </CommandEmpty>
+              <CommandGroup>
+                {models.map((model) => (
+                  <CommandItem
+                    key={model.id}
+                    value={model.id}
+                    onSelect={() => {
+                      setSelectedModel(model.id)
+                      setOpen(false)
+                    }}
+                    className="text-gray-300 data-[selected=true]:bg-gray-800 data-[selected=true]:text-white hover:bg-gray-800 hover:text-white cursor-pointer"
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4 shrink-0",
+                        selectedModel === model.id ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    <span className="truncate">{model.name}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </div>
+  )
+})
 
 interface WelcomeViewProps {
   prompt: string
@@ -64,6 +179,16 @@ export function WelcomeView({
     const fetchModels = async () => {
       if (!selectedProvider) return;
 
+      // Check sessionStorage cache first
+      const cacheKey = `models_${selectedProvider}`
+      const cached = sessionStorage.getItem(cacheKey)
+      if (cached) {
+        const cachedModels = JSON.parse(cached)
+        setModels(cachedModels)
+        if (cachedModels.length > 0) setSelectedModel(cachedModels[0].id)
+        return
+      }
+
       setIsLoadingModels(true)
       setSelectedModel("") // Reset the selected model when the provider changes
       setModels([]) // Clear previous models when changing provider
@@ -83,6 +208,7 @@ export function WelcomeView({
           }
         }
 
+        sessionStorage.setItem(cacheKey, JSON.stringify(data))
         setModels(data)
 
         // Automatically select the first model if available
@@ -156,33 +282,13 @@ export function WelcomeView({
           onProviderChange={() => {}}
         />
 
-        <div className="w-full mb-4">
-          <label className="block text-sm font-medium text-gray-300 mb-2">SELECT MODEL</label>
-          <Select value={selectedModel} onValueChange={setSelectedModel} disabled={!selectedProvider || isLoadingModels}>
-            <SelectTrigger className="w-full bg-gray-900/80 border-gray-800 focus:border-white focus:ring-white text-white">
-              <SelectValue placeholder={selectedProvider ? "Choose a model..." : "Select a provider first"} />
-            </SelectTrigger>
-            <SelectContent className="bg-gray-900 border-gray-800 text-white">
-              {isLoadingModels ? (
-                <div className="flex items-center justify-center py-2">
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  <span>Loading models...</span>
-                </div>
-              ) : models.length > 0 ? (
-                // Use index + ID as key to avoid duplicates
-                models.map((model, index) => (
-                  <SelectItem key={`${index}-${model.id}`} value={model.id}>
-                    {model.name}
-                  </SelectItem>
-                ))
-              ) : (
-                <div className="p-2 text-sm text-gray-400">
-                  {selectedProvider ? "No models available" : "Select a provider first"}
-                </div>
-              )}
-            </SelectContent>
-          </Select>
-        </div>
+        <ModelSelector
+          models={models}
+          selectedModel={selectedModel}
+          setSelectedModel={setSelectedModel}
+          isLoadingModels={isLoadingModels}
+          selectedProvider={selectedProvider}
+        />
 
         <div className="w-full mb-4">
           <label className="block text-sm font-medium text-gray-300 mb-2">SYSTEM PROMPTS</label>
