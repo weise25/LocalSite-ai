@@ -6,8 +6,10 @@ export type Theme = "day" | "night";
 export const THEME_KEY = "localsite.theme";
 
 /** Daylight runs from 06:00 to 17:59 local time; Nocturne the rest. */
-export function themeForTime(date = new Date()): Theme {
-  const hour = date.getHours();
+export function themeForTime(time = Date.now()): Theme {
+  // Plain one-off read of the clock, not reactive state
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity
+  const hour = new Date(time).getHours();
   return hour >= 6 && hour < 18 ? "day" : "night";
 }
 
@@ -22,7 +24,7 @@ class ThemeStore {
   }
 
   get theme(): Theme {
-    return this.mode === "auto" ? themeForTime(new Date(this.now)) : this.mode;
+    return this.mode === "auto" ? themeForTime(this.now) : this.mode;
   }
 
   /** Re-checks the clock every minute so "auto" flips at sunrise/sunset. */

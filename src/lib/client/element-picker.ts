@@ -87,7 +87,7 @@ export const ELEMENT_PICKER_INJECTION = `
     e.data.on ? start() : stop();
   });
 })();
-<\/script>
+</script>
 `;
 
 /** Appends the picked element as context for the model. */

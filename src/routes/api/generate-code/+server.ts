@@ -1,7 +1,6 @@
 import type { RequestHandler } from "./$types";
 import {
   isProviderConfigured,
-  LLMProvider,
   parseLLMProvider,
   resolveDefaultProvider,
 } from "$lib/server/providers/config";

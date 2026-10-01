@@ -1,10 +1,25 @@
-FROM denoland/deno:2.8.3
+# ---- Build ----
+FROM node:24-slim AS build
 
 WORKDIR /app
 
-COPY . .
+# Install from the committed lockfile first so this layer is cached.
+# .npmrc disables dependency install scripts (see SECURITY.md).
+COPY package.json package-lock.json .npmrc ./
+RUN npm ci
 
-RUN deno install && deno task build
+COPY . .
+RUN npm run build && npm prune --omit=dev
+
+# ---- Runtime ----
+FROM node:24-slim
+
+WORKDIR /app
+ENV NODE_ENV=production
+
+COPY --from=build /app/package.json ./
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/build ./build
 
 RUN echo '#!/bin/sh' > /app/entrypoint.sh && \
     echo 'echo "# Configuration generated at startup" > .env' >> /app/entrypoint.sh && \
@@ -26,7 +41,8 @@ USER appuser
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD deno eval "try { const r = await fetch('http://127.0.0.1:3000'); Deno.exit(r.ok ? 0 : 1); } catch { Deno.exit(1); }"
+  CMD node -e "fetch('http://127.0.0.1:3000').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
 
 ENTRYPOINT ["/app/entrypoint.sh"]
-CMD ["deno", "run", "-A", "build/index.js"]
+# Variables set on the container win over the generated .env
+CMD ["node", "--env-file-if-exists=.env", "build"]

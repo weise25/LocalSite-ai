@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import { PanelLeftClose, Plus } from '@lucide/svelte';
+  import { resolve } from '$app/paths';
   import { cn } from '$lib/utils';
   import MoonLogo from '$lib/components/night/MoonLogo.svelte';
   import { providerStore } from '$lib/state/providers.svelte';
@@ -48,7 +49,7 @@
   )}
 >
   <div class="flex items-center justify-between px-2">
-    <a href="/" class="flex items-center gap-2.5 rounded-md">
+    <a href={resolve('/')} class="flex items-center gap-2.5 rounded-md">
       <MoonLogo />
       <span class="text-[15px] font-semibold tracking-tight">LocalSite</span>
     </a>

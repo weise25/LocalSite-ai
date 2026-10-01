@@ -7,23 +7,21 @@
 > date, see [SECURITY.md](./SECURITY.md) to check and remediate.
 
 > [!CAUTION]
-> **v0.6.0 — Breaking changes:** This release replaces the entire Next.js /
-> React stack with **SvelteKit + Svelte 5** and moves the runtime to **Deno 2**.
-> Features and all 9 AI provider integrations are unchanged — only the
-> toolchain and project structure differ.
+> **v0.7.0 — Back to Node.js:** The runtime moves from Deno to **Node.js 24**
+> with npm. The SvelteKit + Svelte 5 code base is unchanged.
 >
-> **If you are upgrading from v0.5.x or earlier:**
+> **If you are upgrading from v0.6.x:**
 >
-> 1. Install [Deno 2.x](https://deno.com/) — Node.js and npm are no longer
->    required.
-> 2. Pull the latest code and run `deno install` (replaces `npm install`).
-> 3. Keep your existing `.env.local` (dev) or `.env` (production) — environment
->    variable names are unchanged.
-> 4. Use `deno task dev`, `deno task build`, and `deno task start` instead of
->    npm scripts.
+> 1. Install [Node.js 24](https://nodejs.org/) (or run `nvm use` — the repo
+>    ships an `.nvmrc`).
+> 2. Pull the latest code, delete `node_modules`, then run `npm ci`.
+> 3. Keep your existing `.env.local` (dev) or `.env` (production) — variable
+>    names are unchanged.
+> 4. Use `npm run dev`, `npm run build` and `npm start` instead of
+>    `deno task …`.
 > 5. For Docker deployments, rebuild your images (`docker compose up --build`).
 >
-> See the [Changelog](./CHANGELOG.md) for the full migration details.
+> See the [Changelog](./CHANGELOG.md) for details.
 
 A modern web application that uses AI to generate HTML, CSS, and JavaScript code
 based on natural language prompts. Simply describe what you want to build, and
@@ -50,7 +48,7 @@ the AI will create a complete, self-contained web page for you.
 ## Tech Stack
 
 - [SvelteKit](https://svelte.dev/docs/kit) (Svelte 5 with runes)
-- [Deno](https://deno.com/) runtime and toolchain
+- [Node.js 24](https://nodejs.org/) with npm
 - [Tailwind CSS](https://tailwindcss.com/)
 - [Vercel AI SDK](https://sdk.vercel.ai/) (provider streaming)
 - [Monaco Editor](https://microsoft.github.io/monaco-editor/)
@@ -59,7 +57,7 @@ the AI will create a complete, self-contained web page for you.
 
 ### Prerequisites
 
-- [Deno](https://deno.com/) (version 2.x or higher)
+- [Node.js](https://nodejs.org/) 24 or newer (npm is included)
 - [Ollama](https://ollama.com/download/) or [LM Studio](https://lmstudio.ai/)
   installed
 - OR an API key from one of the supported providers (see below)
@@ -72,10 +70,12 @@ the AI will create a complete, self-contained web page for you.
    cd LocalSite-ai
    ```
 
-2. Install the dependencies:
+2. Install the dependencies (exactly as pinned in `package-lock.json`):
    ```bash
-   deno install
+   npm ci
    ```
+   Dependency install scripts are disabled in `.npmrc` for supply-chain
+   safety; nothing in this project needs them.
 
 3. Rename the `.env.example` file in the root directory to `.env.local` and add
    your API key:
@@ -96,7 +96,7 @@ the AI will create a complete, self-contained web page for you.
 
 4. Start the development server:
    ```bash
-   deno task dev
+   npm run dev
    ```
 
 5. Open [http://localhost:5173](http://localhost:5173) in your browser.
@@ -222,17 +222,21 @@ OPENAI_COMPATIBLE_MODEL=gpt-4o-mini
 
 ## Deployment
 
-This is a SvelteKit app built with `@sveltejs/adapter-node`. `deno task build`
-produces a standalone server in `build/`, which you run with:
+This is a SvelteKit app built with `@sveltejs/adapter-node`. `npm run build`
+produces a server in `build/`, which you run with:
 
 ```bash
-deno task build
-deno run -A build/index.js   # listens on port 3000 (set PORT to override)
+npm run build
+npm start   # node --env-file-if-exists=.env build — port 3000 (set PORT to override)
 ```
+
+`npm start` loads a `.env` file next to `package.json` if there is one;
+variables already set in the environment take precedence.
 
 ### Docker
 
-A `Dockerfile` and `docker-compose.yml` are included (Deno-based). With Docker
+A `Dockerfile` (multi-stage, `node:24-slim`) and `docker-compose.yml` are
+included. With Docker
 running:
 
 ```bash
@@ -241,9 +245,8 @@ docker compose up --build
 
 ### Other hosting options
 
-- [Deno Deploy](https://deno.com/deploy)
-- Any host that can run a Deno (or Node) process and serve the
-  `adapter-node` output
+- Any host that can run a Node.js 24 process and serve the `adapter-node`
+  output
 - Swap in a different [SvelteKit adapter](https://svelte.dev/docs/kit/adapters)
   (Vercel, Netlify, Cloudflare) if you prefer a serverless target
 

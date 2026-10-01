@@ -4,7 +4,11 @@
   import MoonPhase from '$lib/components/night/MoonPhase.svelte';
   import { themeStore } from '$lib/state/theme.svelte';
 
-  let { error, status }: { error: Error & { message?: string }; status: number } = $props();
+  import { page } from '$app/state';
+
+  // SvelteKit passes nothing to +error.svelte; error and status live on `page`
+  const status = $derived(page.status);
+  const message = $derived(page.error?.message ?? 'An unexpected error occurred.');
 </script>
 
 <div class="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-night-950 p-6 text-star">
@@ -15,7 +19,7 @@
     <h1 class="mt-2 font-serif text-[40px] italic leading-none text-moon-bright">
       {themeStore.theme === 'day' ? 'Lost in the clouds' : 'Lost in the dark'}
     </h1>
-    <p class="mt-4 text-[14px] text-star-muted">{error?.message ?? 'An unexpected error occurred.'}</p>
+    <p class="mt-4 text-[14px] text-star-muted">{message}</p>
     <Button onclick={() => (window.location.href = '/')} class="mt-8 px-6">Back to {themeStore.theme === 'day' ? 'daylight' : 'the sky'}</Button>
   </div>
 </div>

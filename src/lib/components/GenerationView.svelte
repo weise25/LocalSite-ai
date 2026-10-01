@@ -101,7 +101,7 @@
         e.preventDefault();
       }
     });
-  <\/script>
+  ${'</'}script>
 `;
 
   function prepareHtmlContent(code: string): string {

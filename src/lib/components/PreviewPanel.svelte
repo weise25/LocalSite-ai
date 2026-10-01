@@ -173,7 +173,7 @@
           opacity2 = 0;
         }, 200);
       }
-    } catch (e) {
+    } catch {
       activeFrame = frameNumber as 1 | 2;
       // Fallback
       if (activeFrame === 1) {

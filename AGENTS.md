@@ -30,11 +30,13 @@ LocalSite-AI generates complete, self-contained HTML/CSS/JS web pages from
 natural language prompts using AI. Users pick a provider and model, describe
 what they want, and get a live preview with an editable Monaco code editor.
 
-**Tech stack:** SvelteKit 2, Svelte 5 (runes), Deno 2, Tailwind CSS 3,
+**Tech stack:** SvelteKit 2, Svelte 5 (runes), Node.js 24, Tailwind CSS 3,
 Vercel AI SDK v5, Monaco Editor, Paneforge, svelte-sonner, @lucide/svelte.
 
-**Runtime:** Deno 2 (`deno task dev/build/check/lint`). `package.json` retains
-npm scripts for compatibility but Deno is the primary toolchain.
+**Runtime:** Node.js 24 with npm (`.nvmrc`, `engines` in `package.json`).
+`package-lock.json` is committed; install with `npm ci`. `.npmrc` sets
+`ignore-scripts=true` (supply-chain safety, see SECURITY.md) and
+`engine-strict=true` — do not add dependencies that need install scripts.
 
 ## Architecture
 
@@ -106,11 +108,12 @@ src/
 ## Development Commands
 
 ```bash
-deno task dev        # Start dev server (localhost:5173)
-deno task build      # Production build to build/
-deno task check      # TypeScript + Svelte type checking
-deno task lint       # Deno linter
-deno task start      # Run production server (build/index.js)
+npm ci              # Install exactly what package-lock.json pins
+npm run dev         # Start dev server (localhost:5173)
+npm run build       # Production build to build/
+npm run check       # TypeScript + Svelte type checking (svelte-check)
+npm run lint        # ESLint (eslint.config.js: JS, TypeScript, Svelte)
+npm start           # Production server; loads .env if present
 ```
 
 ## Important Gotchas

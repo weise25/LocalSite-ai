@@ -38,37 +38,35 @@
       Tokens · {short(maxTokens)}
     </button>
   {/snippet}
-  {#snippet children()}
-    <p class="label-mono mb-2.5">Max output tokens</p>
-    <div class="grid grid-cols-3 gap-1.5">
-      {#each presets as preset (preset ?? 0)}
-        <button
-          type="button"
-          onclick={() => (maxTokens = preset)}
-          class={cn(
-            'h-8 rounded-[8px] border font-mono text-[12px] transition-colors',
-            maxTokens === preset
-              ? 'border-moon/30 bg-moon/[0.12] text-moon-bright'
-              : 'border-moon/[0.08] text-star-2 hover:bg-moon/[0.06]'
-          )}
-        >
-          {short(preset)}
-        </button>
-      {/each}
-    </div>
-    <label for="max-tokens" class="mt-3 block text-[12px] text-star-muted">Exact value</label>
-    <Input
-      id="max-tokens"
-      type="number"
-      min="100"
-      step="100"
-      value={maxTokens ?? ''}
-      oninput={onInput}
-      placeholder="Model default"
-      class="mt-1.5 h-9 font-mono"
-    />
-    <p class="mt-2 text-[11.5px] leading-snug text-star-dim">
-      Higher limits allow longer pages but take more time.
-    </p>
-  {/snippet}
+  <p class="label-mono mb-2.5">Max output tokens</p>
+  <div class="grid grid-cols-3 gap-1.5">
+    {#each presets as preset (preset ?? 0)}
+      <button
+        type="button"
+        onclick={() => (maxTokens = preset)}
+        class={cn(
+          'h-8 rounded-[8px] border font-mono text-[12px] transition-colors',
+          maxTokens === preset
+            ? 'border-moon/30 bg-moon/[0.12] text-moon-bright'
+            : 'border-moon/[0.08] text-star-2 hover:bg-moon/[0.06]'
+        )}
+      >
+        {short(preset)}
+      </button>
+    {/each}
+  </div>
+  <label for="max-tokens" class="mt-3 block text-[12px] text-star-muted">Exact value</label>
+  <Input
+    id="max-tokens"
+    type="number"
+    min="100"
+    step="100"
+    value={maxTokens ?? ''}
+    oninput={onInput}
+    placeholder="Model default"
+    class="mt-1.5 h-9 font-mono"
+  />
+  <p class="mt-2 text-[11.5px] leading-snug text-star-dim">
+    Higher limits allow longer pages but take more time.
+  </p>
 </Popover>
