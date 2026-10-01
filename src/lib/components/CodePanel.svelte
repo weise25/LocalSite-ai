@@ -1,179 +1,129 @@
 <script lang="ts">
-  import { Copy, Loader2, Save, ArrowRight } from '@lucide/svelte';
-  import Button from '$lib/components/ui/Button.svelte';
-  import Switch from '$lib/components/ui/Switch.svelte';
-  import Textarea from '$lib/components/ui/Textarea.svelte';
-  import ScrollArea from '$lib/components/ui/ScrollArea.svelte';
+  import type { Snippet } from 'svelte';
+  import { Check, Copy, Lock, PenLine, Undo2 } from '@lucide/svelte';
+  import { cn } from '$lib/utils';
+  import Kbd from '$lib/components/ui/Kbd.svelte';
+  import MoonPhase from '$lib/components/night/MoonPhase.svelte';
   import CodeEditor from '$lib/components/CodeEditor.svelte';
-  import WorkSteps from '$lib/components/WorkSteps.svelte';
+  import type { GenerationStatus } from '$lib/state/code-generation.svelte';
 
   interface Props {
+    code: string;
+    status: GenerationStatus;
     isGenerating: boolean;
-    generationComplete: boolean;
+    canEdit: boolean;
     isEditable: boolean;
     hasChanges: boolean;
     copySuccess: boolean;
-    generatedCode: string;
-    editedCode: string;
-    originalCode: string;
-    previousPrompt: string;
-    newPrompt: string;
+    mod: string;
+    /** Label next to the file name, e.g. "v3" or "viewing v2" */
+    versionLabel?: string;
+    toolbarExtra?: Snippet;
+    /** Replaces the editor (e.g. a diff view) */
+    override?: Snippet;
     setEditable: (value: boolean) => void;
-    saveChanges: () => void;
-    copyToClipboard: () => void;
     onEditedCodeChange: (value: string) => void;
-    onNewPromptChange: (value: string) => void;
-    handleSendNewPrompt: () => void;
-    requestSaveDialog: () => void;
+    onSave: () => void;
+    onDiscard: () => void;
+    onCopy: () => void;
+    class?: string;
   }
 
   let {
+    code,
+    status,
     isGenerating,
-    generationComplete,
+    canEdit,
     isEditable,
     hasChanges,
     copySuccess,
-    generatedCode,
-    editedCode,
-    originalCode,
-    previousPrompt,
-    newPrompt,
+    mod,
+    versionLabel = '',
+    toolbarExtra,
+    override,
     setEditable,
-    saveChanges,
-    copyToClipboard,
     onEditedCodeChange,
-    onNewPromptChange,
-    handleSendNewPrompt,
-    requestSaveDialog
+    onSave,
+    onDiscard,
+    onCopy,
+    class: className = ''
   }: Props = $props();
 
-  function handleKeyDown(event: KeyboardEvent) {
-    if (event.key === 'Enter' && !event.shiftKey) {
-      event.preventDefault();
-      handleSendNewPrompt();
-    }
-  }
-
-  function onToggle(checked: boolean) {
-    if (!checked && hasChanges) {
-      requestSaveDialog();
-    } else {
-      setEditable(checked);
-    }
-  }
+  const dot = $derived(
+    isGenerating ? 'bg-gold' : status === 'stopped' ? 'bg-gold/60' : status === 'error' ? 'bg-ember' : 'bg-aurora'
+  );
 </script>
 
-<div class="flex h-full flex-col">
-  <!-- CODE EDITOR SECTION (65% height) -->
-  <div class="flex h-[65%] flex-col border-b border-gray-800">
-    <!-- Editor Toolbar -->
-    <div class="flex items-center justify-between border-b border-gray-800 bg-gray-900/50 p-2">
-      <div class="flex items-center gap-2">
-        <h2 class="text-sm font-medium">GENERATED HTML</h2>
-        {#if generationComplete}
-          <div class="ml-3 flex items-center space-x-2">
-            <span class="text-xs text-gray-400">{isEditable ? 'Edit' : 'Read Only'}</span>
-            <Switch
-              checked={isEditable}
-              disabled={isGenerating}
-              ariaLabel="Toggle edit mode"
-              onCheckedChange={onToggle}
-            />
-          </div>
-        {/if}
-      </div>
+<section class={cn('glass flex h-full min-h-0 flex-col overflow-hidden rounded-2xl', className)} aria-label="Code">
+  <div class="flex h-[42px] shrink-0 items-center justify-between gap-2 border-b border-moon/[0.07] pl-1.5 pr-2">
+    <div class="flex min-w-0 items-center gap-2">
+      <span class="flex h-[30px] items-center gap-2 rounded-lg bg-moon/[0.07] px-3 font-mono text-[12px] text-moon-bright">
+        index.html
+        <span class={cn('h-1.5 w-1.5 rounded-full', dot)}></span>
+      </span>
+      {#if versionLabel}
+        <span class="truncate font-mono text-[11px] text-star-dim">{versionLabel}</span>
+      {/if}
+    </div>
 
-      <div class="flex items-center gap-2">
-        {#if isEditable && hasChanges}
-          <Button
-            variant="ghost"
-            size="sm"
-            class="h-7 px-2 text-green-500 hover:bg-green-900/20 hover:text-green-400"
-            onclick={saveChanges}
+    <div class="flex items-center gap-1.5">
+      {#if isGenerating}
+        <span class="hidden items-center gap-1.5 font-mono text-[11px] text-star-dim sm:flex">
+          <Lock class="h-3 w-3" /> read-only while writing
+        </span>
+      {:else if isEditable}
+        <span class="hidden items-center gap-1.5 font-mono text-[11px] text-star-muted md:flex">
+          <span class="text-aurora">●</span> editing
+        </span>
+        {#if hasChanges}
+          <button type="button" class="chip h-7 px-2.5 text-[12px]" onclick={onDiscard}>
+            <Undo2 class="h-3.5 w-3.5" /> Discard
+          </button>
+          <button
+            type="button"
+            class="btn-moon flex h-7 items-center gap-1.5 rounded-[8px] px-2.5 text-[12px] font-semibold"
+            onclick={onSave}
           >
-            <Save class="mr-1 h-4 w-4" />
-            Save
-          </Button>
+            Save <Kbd class="h-4 border-night-900/10 bg-night-900/[0.08] text-night-600">{mod}S</Kbd>
+          </button>
+        {:else}
+          <button type="button" class="chip h-7 px-2.5 text-[12px]" onclick={() => setEditable(false)}>Done</button>
         {/if}
-        <Button
-          variant="ghost"
-          size="sm"
-          class="h-7 px-2 text-gray-400 hover:text-white"
-          onclick={copyToClipboard}
-          disabled={!generatedCode || isGenerating}
-        >
-          <Copy class="mr-1 h-4 w-4" />
-          {copySuccess ? 'Copied!' : 'Copy'}
-        </Button>
-      </div>
-    </div>
-
-    <!-- Editor Content Area -->
-    <div class="flex-1 overflow-hidden">
-      {#if isGenerating && !generatedCode}
-        <div class="flex h-full w-full items-center justify-center bg-gray-950">
-          <div class="text-center">
-            <Loader2 class="mx-auto mb-4 h-8 w-8 animate-spin text-white" />
-            <p class="text-gray-400">Generating code...</p>
-          </div>
-        </div>
-      {:else}
-        <CodeEditor
-          code={isEditable ? editedCode : originalCode}
-          isEditable={isEditable && generationComplete}
-          onChange={onEditedCodeChange}
-        />
+      {:else if canEdit}
+        <button type="button" class="chip h-7 px-2.5 text-[12px]" onclick={() => setEditable(true)}>
+          <PenLine class="h-3.5 w-3.5" /> Edit
+        </button>
       {/if}
+      {#if toolbarExtra}{@render toolbarExtra()}{/if}
+      <button
+        type="button"
+        onclick={onCopy}
+        disabled={!code || isGenerating}
+        aria-label={copySuccess ? 'Copied' : 'Copy code'}
+        title="Copy code"
+        class="flex h-7 w-8 items-center justify-center rounded-[7px] text-star-dim transition-colors hover:bg-moon/[0.07] hover:text-star disabled:opacity-40"
+      >
+        {#if copySuccess}<Check class="h-4 w-4 text-aurora" />{:else}<Copy class="h-4 w-4" />{/if}
+      </button>
     </div>
   </div>
 
-  <!-- BOTTOM SECTION (35% height) -->
-  <div class="flex h-[35%] flex-col overflow-hidden p-3">
-    <!-- New Prompt Input -->
-    <div class="mb-2 flex-shrink-0">
-      <h3 class="mb-1 text-xs font-medium text-gray-400">NEW PROMPT</h3>
-      <div class="relative">
-        <Textarea
-          value={newPrompt}
-          oninput={(e) => onNewPromptChange((e.target as HTMLTextAreaElement).value)}
-          placeholder="Enter a new prompt..."
-          class="min-h-[60px] w-full rounded-md border border-gray-800 bg-gray-900/50 p-2 pr-10 text-sm text-gray-300 focus-visible:border-white focus-visible:ring-white"
-          onkeydown={handleKeyDown}
-          disabled={isGenerating}
-        />
-        <Button
-          size="sm"
-          class="absolute bottom-2 right-2 h-6 w-6 p-0 {newPrompt.trim()
-            ? 'bg-gray-700 hover:bg-gray-600'
-            : 'bg-gray-800 hover:bg-gray-700'}"
-          onclick={handleSendNewPrompt}
-          disabled={!newPrompt.trim() || isGenerating}
-        >
-          <ArrowRight class="h-3 w-3 {newPrompt.trim() ? 'text-white' : 'text-gray-400'}" />
-          <span class="sr-only">Send</span>
-        </Button>
+  <div class="relative min-h-0 flex-1">
+    {#if override}
+      {@render override()}
+    {:else if isGenerating && !code}
+      <div class="flex h-full flex-col items-center justify-center gap-3 text-center">
+        <MoonPhase phase="waxing" size={28} />
+        <p class="text-[13px] text-star-muted">The first lines are on their way…</p>
       </div>
-
-      {#if previousPrompt}
-        <div class="mt-2">
-          <h4 class="text-xs font-medium text-gray-400">PREVIOUS PROMPT:</h4>
-          <ScrollArea class="mt-1 h-12 w-full rounded-md border border-gray-800 bg-gray-900/30 p-2">
-            <p class="text-xs text-gray-400">{previousPrompt}</p>
-          </ScrollArea>
-        </div>
-      {/if}
-    </div>
-
-    <!-- Work Steps Visualization -->
-    <div class="flex-1 overflow-hidden">
-      <h3 class="mb-1 text-xs font-medium text-gray-400">AI WORK STEPS</h3>
-      <div class="h-[calc(100%-20px)] overflow-hidden">
-        <WorkSteps
-          {isGenerating}
-          {generationComplete}
-          generatedCode={isEditable ? editedCode : generatedCode}
-        />
-      </div>
-    </div>
+    {:else}
+      <CodeEditor
+        {code}
+        isEditable={isEditable && canEdit}
+        streaming={isGenerating}
+        onChange={onEditedCodeChange}
+        {onSave}
+      />
+    {/if}
   </div>
-</div>
+</section>

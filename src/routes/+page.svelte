@@ -5,10 +5,8 @@
   import WelcomeView from '$lib/components/WelcomeView.svelte';
   import GenerationView from '$lib/components/GenerationView.svelte';
   import { CodeGeneration } from '$lib/state/code-generation.svelte';
+  import { Session } from '$lib/state/session.svelte';
   import { readJSON, writeJSON } from '$lib/client/storage';
-
-  let isLoading = $state(true);
-  let showGenerationView = $state(false);
 
   interface Preferences {
     provider?: string;
@@ -22,12 +20,18 @@
   const PREFS_KEY = 'localsite.prefs';
   const prefs = readJSON<Preferences>(PREFS_KEY, {});
 
+  let isLoading = $state(true);
+  let showGenerationView = $state(false);
+
   let prompt = $state('');
   let selectedProvider = $state(prefs.provider ?? '');
   let selectedModel = $state(prefs.model ?? '');
   let selectedSystemPrompt = $state(prefs.systemPrompt ?? 'default');
   let customSystemPrompt = $state(prefs.customSystemPrompt ?? '');
   let maxTokens = $state<number | undefined>(prefs.maxTokens);
+
+  const gen = new CodeGeneration();
+  const session = new Session();
 
   // Remember the last provider, model and mode across visits
   $effect(() => {
@@ -39,8 +43,6 @@
       maxTokens
     } satisfies Preferences);
   });
-
-  const gen = new CodeGeneration();
 
   onMount(() => {
     let cancelled = false;
@@ -71,34 +73,74 @@
     return true;
   }
 
-  async function handleGenerate() {
-    if (!validateGenerationInput()) return;
+  /** Runs one generation turn and records the result as a version. */
+  async function runTurn(text: string) {
+    const provider = selectedProvider;
+    const model = selectedModel;
+    const sessionId = session.id;
 
-    showGenerationView = true;
-    await gen.generateCode({
-      prompt,
-      model: selectedModel,
-      provider: selectedProvider,
+    const ok = await gen.generateCode({
+      prompt: text,
+      model,
+      provider,
       maxTokens,
       systemPromptType: selectedSystemPrompt,
       customSystemPrompt
     });
+
+    // The user may have started over while this was running
+    if (session.id !== sessionId) return;
+
+    const stopped = !ok && gen.status === 'stopped' && !!gen.generatedCode;
+    if (ok || stopped) {
+      session.commit({
+        prompt: text,
+        code: gen.generatedCode,
+        durationMs: gen.endedAt - gen.startedAt,
+        thinking: gen.thinkingOutput,
+        thinkingMs: gen.thinkingStartedAt ? (gen.thinkingEndedAt || gen.endedAt) - gen.thinkingStartedAt : 0,
+        stopped,
+        provider,
+        model
+      });
+    } else if (gen.status === 'stopped') {
+      // Stopped before any code arrived: nothing to keep
+      session.endTurn();
+      if (session.latest) gen.load(session.latest.code);
+    }
   }
 
-  async function handleRegenerateWithNewPrompt(newPrompt: string) {
-    prompt = newPrompt;
-    await gen.generateCode({
-      prompt: newPrompt,
-      model: selectedModel,
-      provider: selectedProvider,
-      maxTokens,
-      systemPromptType: selectedSystemPrompt,
-      customSystemPrompt
-    });
+  async function handleGenerate() {
+    if (!validateGenerationInput()) return;
+    session.start(prompt);
+    showGenerationView = true;
+    await runTurn(prompt);
+  }
+
+  async function handleSend(text: string) {
+    if (gen.isGenerating) return;
+    session.beginTurn(text);
+    await runTurn(text);
+  }
+
+  async function handleRetry() {
+    const text = session.pendingPrompt;
+    if (!text || gen.isGenerating) return;
+    await runTurn(text);
+  }
+
+  function handleStop() {
+    gen.stop();
+  }
+
+  function handleSaveEdit(code: string) {
+    session.commit({ prompt: '', code, manual: true, provider: selectedProvider, model: selectedModel });
+    gen.load(code);
   }
 
   function handleRestart() {
     gen.reset();
+    session.reset();
     showGenerationView = false;
   }
 </script>
@@ -107,16 +149,16 @@
   <LoadingScreen />
 {:else if showGenerationView}
   <GenerationView
-    {prompt}
+    {gen}
+    {session}
     model={selectedModel}
     provider={selectedProvider}
-    generatedCode={gen.generatedCode}
-    isGenerating={gen.isGenerating}
-    generationComplete={gen.generationComplete}
-    thinkingOutput={gen.thinkingOutput}
-    isThinking={gen.isThinking}
-    onRegenerateWithNewPrompt={handleRegenerateWithNewPrompt}
+    onSend={handleSend}
+    onRetry={handleRetry}
+    onStop={handleStop}
     onRestart={handleRestart}
+    onSaveEdit={handleSaveEdit}
+    onViewVersion={(n) => (session.viewing = n)}
   />
 {:else}
   <WelcomeView

@@ -187,3 +187,9 @@ body {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* Monaco: the line currently being streamed in */
+.monaco-editor .nocturne-writing-line {
+  background: linear-gradient(90deg, rgba(199, 210, 254, 0.1), rgba(199, 210, 254, 0.02));
+  box-shadow: inset 2px 0 0 #c7d2fe;
+}

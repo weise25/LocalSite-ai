@@ -7,12 +7,23 @@ export interface GenerateCodeParams {
   maxTokens?: number;
   systemPromptType: string; // 'default', 'thinking', 'custom'
   customSystemPrompt?: string;
+  /** Current HTML to iterate on; omitted for a fresh generation */
+  previousCode?: string;
 }
 
 // Interface for NDJSON stream parts
 interface StreamPart {
-  type: "text" | "reasoning";
+  type: "text" | "reasoning" | "error";
   content: string;
+}
+
+export type GenerationStatus = "idle" | "generating" | "done" | "stopped" | "error";
+
+/** Removes markdown code fences the model may have wrapped around the HTML. */
+export function stripFences(s: string): string {
+  return s
+    .replace(/^[\s\S]*?```(?:[a-zA-Z0-9]+)?\s*\n/i, "")
+    .replace(/\n\s*```[\s\S]*$/i, "");
 }
 
 /**
@@ -25,11 +36,34 @@ export class CodeGeneration {
   generationComplete = $state(false);
   thinkingOutput = $state("");
   isThinking = $state(false);
+  status = $state<GenerationStatus>("idle");
+  /** Epoch ms timestamps for the status capsule and version metadata */
+  startedAt = $state(0);
+  endedAt = $state(0);
+  thinkingStartedAt = $state(0);
+  thinkingEndedAt = $state(0);
 
   private abortController: AbortController | null = null;
 
   abort() {
     this.abortController?.abort();
+  }
+
+  /**
+   * Stops a running generation but keeps what was written so far,
+   * so it can still be previewed, edited and exported.
+   */
+  stop() {
+    if (!this.isGenerating) return;
+    const partial = stripFences(this.generatedCode);
+    this.abort();
+    this.isGenerating = false;
+    this.isThinking = false;
+    if (this.thinkingStartedAt && !this.thinkingEndedAt) this.thinkingEndedAt = Date.now();
+    this.endedAt = Date.now();
+    this.generatedCode = partial;
+    this.generationComplete = !!partial;
+    this.status = "stopped";
   }
 
   reset() {
@@ -39,6 +73,19 @@ export class CodeGeneration {
     this.generationComplete = false;
     this.thinkingOutput = "";
     this.isThinking = false;
+    this.status = "idle";
+    this.startedAt = 0;
+    this.endedAt = 0;
+    this.thinkingStartedAt = 0;
+    this.thinkingEndedAt = 0;
+  }
+
+  /** Shows an existing version without generating (e.g. a restored session). */
+  load(code: string) {
+    this.reset();
+    this.generatedCode = code;
+    this.generationComplete = true;
+    this.status = "done";
   }
 
   async generateCode({
@@ -48,10 +95,11 @@ export class CodeGeneration {
     maxTokens,
     systemPromptType,
     customSystemPrompt,
-  }: GenerateCodeParams) {
+    previousCode,
+  }: GenerateCodeParams): Promise<boolean> {
     if (!prompt.trim() || !model || !provider) {
       toast.error("Please enter a prompt and select a provider and model.");
-      return;
+      return false;
     }
 
     this.abortController?.abort();
@@ -64,6 +112,11 @@ export class CodeGeneration {
     this.thinkingOutput = "";
     this.isThinking = false;
     this.generationComplete = false;
+    this.status = "generating";
+    this.startedAt = Date.now();
+    this.endedAt = 0;
+    this.thinkingStartedAt = 0;
+    this.thinkingEndedAt = 0;
 
     try {
       // Construct the system prompt logic here or in the API route.
@@ -85,6 +138,7 @@ export class CodeGeneration {
           maxTokens,
           systemPromptType,
           customSystemPrompt: finalCustomSystemPrompt,
+          ...(previousCode ? { previousCode } : {}),
         }),
         signal,
       });
@@ -112,11 +166,7 @@ export class CodeGeneration {
       let hasReceivedReasoning = false;
       const decoder = new TextDecoder();
 
-      const stripFences = (s: string) => {
-        return s
-          .replace(/^[\s\S]*?```(?:[a-zA-Z0-9]+)?\s*\n/i, "")
-          .replace(/\n\s*```[\s\S]*$/i, "");
-      };
+      let streamError = "";
 
       while (true) {
         if (signal.aborted) {
@@ -126,7 +176,7 @@ export class CodeGeneration {
 
         const { done, value } = await reader.read();
 
-        if (done) {
+        if (done || signal.aborted) {
           break;
         }
 
@@ -149,12 +199,16 @@ export class CodeGeneration {
             if (part.type === "text") {
               if (this.isThinking) {
                 this.isThinking = false;
+                this.thinkingEndedAt = Date.now();
               }
               codeChunks.push(part.content);
               codeUpdated = true;
+            } else if (part.type === "error") {
+              streamError = part.content || "Stream error occurred";
             } else if (part.type === "reasoning") {
               if (!hasReceivedReasoning) {
                 this.isThinking = true;
+                this.thinkingStartedAt = Date.now();
                 hasReceivedReasoning = true;
               }
               reasoningChunks.push(part.content);
@@ -198,16 +252,26 @@ export class CodeGeneration {
       // End thinking state
       if (hasReceivedReasoning) {
         this.isThinking = false;
+        if (!this.thinkingEndedAt) this.thinkingEndedAt = Date.now();
       }
 
-      if (!signal.aborted) {
-        this.generatedCode = stripFences(codeChunks.join(""));
-        this.generationComplete = true;
+      if (signal.aborted) return false;
+
+      const finalCode = stripFences(codeChunks.join(""));
+      if (!finalCode.trim()) {
+        throw new Error(streamError || "The model returned no code.");
       }
+      this.generatedCode = finalCode;
+      this.generationComplete = true;
+      this.endedAt = Date.now();
+      this.status = "done";
+      return true;
     } catch (error) {
       if (signal.aborted || (error instanceof DOMException && error.name === "AbortError")) {
-        return;
+        return false;
       }
+      this.status = "error";
+      this.endedAt = Date.now();
       console.error("Error generating code:", error);
       if (error instanceof Error) {
         const errorMessage = error.message;
@@ -229,6 +293,7 @@ export class CodeGeneration {
       } else {
         toast.error("Error generating code. Please try again later.");
       }
+      return false;
     } finally {
       if (this.abortController === controller) {
         this.isGenerating = false;
