@@ -7,7 +7,7 @@ services:
       - "3000:3000"
     environment:
       - HOST=0.0.0.0
-      - BODY_SIZE_LIMIT=100K
+      - BODY_SIZE_LIMIT=1M
       # Choose the default provider (ollama or lm_studio)
       - DEFAULT_PROVIDER=ollama
     # volumes:

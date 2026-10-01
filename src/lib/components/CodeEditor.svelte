@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import type * as Monaco from 'monaco-editor';
-  import { defineNocturneTheme, NOCTURNE_THEME } from '$lib/client/monaco-theme';
+  import { NOCTURNE_THEME } from '$lib/client/monaco-theme';
+  import { EDITOR_FONT, loadMonaco } from '$lib/client/monaco';
 
   interface Props {
     code: string;
@@ -27,30 +28,9 @@
     let disposed = false;
 
     (async () => {
-      // Configure Monaco's web workers for Vite (ESM)
-      const [monacoMod, EditorWorker, HtmlWorker, CssWorker] = await Promise.all([
-        import('monaco-editor'),
-        import('monaco-editor/esm/vs/editor/editor.worker?worker'),
-        import('monaco-editor/esm/vs/language/html/html.worker?worker'),
-        import('monaco-editor/esm/vs/language/css/css.worker?worker')
-      ]);
-
-      if (disposed) return;
+      const monacoMod = await loadMonaco();
+      if (disposed || !container) return;
       monaco = monacoMod;
-
-      // The HTML/CSS language services need their own workers; without them
-      // Monaco falls back to the main thread and throws on foreign modules.
-      self.MonacoEnvironment = {
-        getWorker: (_id: string, label: string) => {
-          if (label === 'html' || label === 'handlebars' || label === 'razor') return new HtmlWorker.default();
-          if (label === 'css' || label === 'scss' || label === 'less') return new CssWorker.default();
-          return new EditorWorker.default();
-        }
-      };
-
-      if (!container) return;
-
-      defineNocturneTheme(monaco);
 
       editor = monaco.editor.create(container, {
         value: code,
@@ -59,9 +39,7 @@
         readOnly: !isEditable,
         minimap: { enabled: true, renderCharacters: false, scale: 1, maxColumn: 80 },
         scrollBeyondLastLine: false,
-        fontFamily: "'Geist Mono', ui-monospace, SFMono-Regular, monospace",
-        fontSize: 12.5,
-        lineHeight: 22,
+        ...EDITOR_FONT,
         padding: { top: 12, bottom: 12 },
         renderLineHighlight: 'line',
         guides: { indentation: true },

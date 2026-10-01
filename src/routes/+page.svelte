@@ -7,6 +7,9 @@
   import { CodeGeneration } from '$lib/state/code-generation.svelte';
   import { Session } from '$lib/state/session.svelte';
   import { readJSON, writeJSON } from '$lib/client/storage';
+  import { historyStore } from '$lib/state/history.svelte';
+  import { withElementContext, type PickedElement } from '$lib/client/element-picker';
+  import HistoryList from '$lib/components/welcome/HistoryList.svelte';
 
   interface Preferences {
     provider?: string;
@@ -73,19 +76,33 @@
     return true;
   }
 
+  interface QueuedChange {
+    text: string;
+    target: PickedElement | null;
+  }
+
+  let queued = $state<QueuedChange | null>(null);
+
+  function saveHistory() {
+    historyStore.save(session.snapshot());
+  }
+
   /** Runs one generation turn and records the result as a version. */
-  async function runTurn(text: string) {
+  async function runTurn(text: string, target: PickedElement | null = null) {
     const provider = selectedProvider;
     const model = selectedModel;
     const sessionId = session.id;
+    // Follow-ups revise the latest version instead of starting from scratch
+    const previousCode = session.latest?.code;
 
     const ok = await gen.generateCode({
-      prompt: text,
+      prompt: withElementContext(text, target),
       model,
       provider,
       maxTokens,
       systemPromptType: selectedSystemPrompt,
-      customSystemPrompt
+      customSystemPrompt,
+      previousCode
     });
 
     // The user may have started over while this was running
@@ -100,27 +117,44 @@
         thinking: gen.thinkingOutput,
         thinkingMs: gen.thinkingStartedAt ? (gen.thinkingEndedAt || gen.endedAt) - gen.thinkingStartedAt : 0,
         stopped,
+        target: target?.label,
         provider,
         model
       });
+      saveHistory();
     } else if (gen.status === 'stopped') {
       // Stopped before any code arrived: nothing to keep
       session.endTurn();
       if (session.latest) gen.load(session.latest.code);
     }
+
+    // A change queued during this run goes next, unless the user stopped
+    if (ok && queued) void runQueued();
+  }
+
+  async function runQueued() {
+    const next = queued;
+    if (!next || gen.isGenerating) return;
+    queued = null;
+    session.beginTurn(next.text, next.target?.label);
+    await runTurn(next.text, next.target);
   }
 
   async function handleGenerate() {
     if (!validateGenerationInput()) return;
+    queued = null;
     session.start(prompt);
     showGenerationView = true;
     await runTurn(prompt);
   }
 
-  async function handleSend(text: string) {
-    if (gen.isGenerating) return;
-    session.beginTurn(text);
-    await runTurn(text);
+  async function handleSend(text: string, target: PickedElement | null) {
+    if (gen.isGenerating) {
+      queued = { text, target };
+      return;
+    }
+    session.beginTurn(text, target?.label);
+    await runTurn(text, target);
   }
 
   async function handleRetry() {
@@ -136,11 +170,39 @@
   function handleSaveEdit(code: string) {
     session.commit({ prompt: '', code, manual: true, provider: selectedProvider, model: selectedModel });
     gen.load(code);
+    saveHistory();
+  }
+
+  function handleRestoreVersion(n: number) {
+    const version = session.byN(n);
+    if (!version) return;
+    session.commit({
+      prompt: '',
+      code: version.code,
+      manual: true,
+      restoredFrom: n,
+      provider: version.provider,
+      model: version.model
+    });
+    session.viewing = null;
+    gen.load(version.code);
+    saveHistory();
+  }
+
+  function handleOpenSession(id: string) {
+    const snapshot = historyStore.get(id);
+    if (!snapshot?.versions.length) return;
+    gen.reset();
+    queued = null;
+    session.restore(structuredClone(snapshot));
+    gen.load(snapshot.versions[snapshot.versions.length - 1].code);
+    showGenerationView = true;
   }
 
   function handleRestart() {
     gen.reset();
     session.reset();
+    queued = null;
     showGenerationView = false;
   }
 </script>
@@ -159,6 +221,10 @@
     onRestart={handleRestart}
     onSaveEdit={handleSaveEdit}
     onViewVersion={(n) => (session.viewing = n)}
+    onRestoreVersion={handleRestoreVersion}
+    {queued}
+    onCancelQueue={() => (queued = null)}
+    onRunQueued={runQueued}
   />
 {:else}
   <WelcomeView
@@ -169,5 +235,9 @@
     bind:customSystemPrompt
     bind:maxTokens
     onGenerate={handleGenerate}
-  />
+  >
+    {#snippet history()}
+      <HistoryList onOpen={handleOpenSession} />
+    {/snippet}
+  </WelcomeView>
 {/if}

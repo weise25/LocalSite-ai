@@ -1,6 +1,6 @@
 <script lang="ts">
   import { tick, type Snippet } from 'svelte';
-  import { RotateCw } from '@lucide/svelte';
+  import { Crosshair, RotateCw } from '@lucide/svelte';
   import { cn } from '$lib/utils';
   import MoonPhase from '$lib/components/night/MoonPhase.svelte';
   import ReasoningBlock from './ReasoningBlock.svelte';
@@ -89,11 +89,18 @@
   }
 </script>
 
-{#snippet userBubble(text: string)}
-  <div
-    class="max-w-[92%] self-end whitespace-pre-wrap break-words rounded-[14px_14px_4px_14px] border border-moon/10 bg-moon/[0.09] px-3.5 py-2.5 text-[13.5px] leading-normal text-moon-bright"
-  >
-    {text}
+{#snippet userBubble(text: string, target?: string)}
+  <div class="flex max-w-[92%] flex-col items-end gap-1.5 self-end">
+    <div
+      class="whitespace-pre-wrap break-words rounded-[14px_14px_4px_14px] border border-moon/10 bg-moon/[0.09] px-3.5 py-2.5 text-[13.5px] leading-normal text-moon-bright"
+    >
+      {text}
+    </div>
+    {#if target}
+      <span class="flex items-center gap-1.5 font-mono text-[10.5px] text-star-dim">
+        <Crosshair class="h-3 w-3" /> on &lt;{target}&gt;
+      </span>
+    {/if}
   </div>
 {/snippet}
 
@@ -109,7 +116,7 @@
 
   <div bind:this={scroller} class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-2 pt-4">
     {#each session.versions as v (v.n)}
-      {#if !v.manual}{@render userBubble(v.prompt)}{/if}
+      {#if !v.manual}{@render userBubble(v.prompt, v.target)}{/if}
       <div class="flex flex-col gap-2.5">
         {#if v.thinking}
           <ReasoningBlock text={v.thinking} durationMs={v.thinkingMs} />
@@ -132,7 +139,11 @@
           <span class="flex min-w-0 flex-col gap-0.5">
             <span class="flex items-center gap-2 text-[13px] font-medium text-moon-bright">
               Version {v.n}
-              {#if v.manual}<span class="font-mono text-[10.5px] font-normal text-star-dim">edited by hand</span>{/if}
+              {#if v.restoredFrom}
+                <span class="font-mono text-[10.5px] font-normal text-star-dim">restored from v{v.restoredFrom}</span>
+              {:else if v.manual}
+                <span class="font-mono text-[10.5px] font-normal text-star-dim">edited by hand</span>
+              {/if}
               {#if v.stopped}<span class="font-mono text-[10.5px] font-normal text-gold">stopped early</span>{/if}
             </span>
             <span class="font-mono text-[11px] text-star-muted">
@@ -147,7 +158,7 @@
     {/each}
 
     {#if showPending}
-      {@render userBubble(session.pendingPrompt)}
+      {@render userBubble(session.pendingPrompt, session.pendingTarget)}
       <div class="flex flex-col gap-3">
         {#if thinkingOutput}
           <ReasoningBlock

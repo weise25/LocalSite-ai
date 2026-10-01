@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { onMount, onDestroy, untrack, type Snippet } from 'svelte';
+  import { onMount, onDestroy, untrack } from 'svelte';
+  import { ArrowRightLeft, Crosshair, GitCompareArrows, History, Play, X } from '@lucide/svelte';
   import { toast } from 'svelte-sonner';
   import { Pane, PaneGroup, PaneResizer } from 'paneforge';
   import { cn } from '$lib/utils';
@@ -12,6 +13,9 @@
   import ThreadPanel from '$lib/components/workspace/ThreadPanel.svelte';
   import CodePanel from '$lib/components/CodePanel.svelte';
   import PreviewPanel from '$lib/components/PreviewPanel.svelte';
+  import DiffEditor from '$lib/components/DiffEditor.svelte';
+  import CompareView from '$lib/components/workspace/CompareView.svelte';
+  import { ELEMENT_PICKER_INJECTION, type PickedElement } from '$lib/client/element-picker';
   import type { CodeGeneration } from '$lib/state/code-generation.svelte';
   import type { Session } from '$lib/state/session.svelte';
   import { providerStore } from '$lib/state/providers.svelte';
@@ -23,24 +27,17 @@
     session: Session;
     model: string;
     provider?: string;
-    onSend: (text: string) => void;
+    onSend: (text: string, target: PickedElement | null) => void;
     onRetry: () => void;
     onStop: () => void;
     onRestart: () => void;
     onSaveEdit: (code: string) => void;
-    onViewVersion?: (n: number | null) => void;
-    /** Optional extensions (version compare, queue, element picker) */
-    composerTools?: Snippet;
-    composerAbove?: Snippet;
-    composerPlaceholder?: string;
-    canQueue?: boolean;
-    codeOverride?: Snippet;
-    codeToolbarExtra?: Snippet;
-    previewOverride?: Snippet;
-    previewToolbarExtra?: Snippet;
-    onPreviewFrames?: (frames: (HTMLIFrameElement | undefined)[]) => void;
-    /** Extra markup injected into the preview document (not into exports) */
-    previewInjection?: string;
+    onViewVersion: (n: number | null) => void;
+    onRestoreVersion: (n: number) => void;
+    /** Change waiting for the running generation to land */
+    queued: { text: string; target: PickedElement | null } | null;
+    onCancelQueue: () => void;
+    onRunQueued: () => void;
   }
 
   let {
@@ -54,17 +51,14 @@
     onRestart,
     onSaveEdit,
     onViewVersion,
-    composerTools,
-    composerAbove,
-    composerPlaceholder,
-    canQueue = false,
-    codeOverride,
-    codeToolbarExtra,
-    previewOverride,
-    previewToolbarExtra,
-    onPreviewFrames,
-    previewInjection = ''
+    onRestoreVersion,
+    queued,
+    onCancelQueue,
+    onRunQueued
   }: Props = $props();
+
+  const canQueue = true;
+  const previewInjection = ELEMENT_PICKER_INJECTION;
 
   const generatedCode = $derived(gen.generatedCode);
   const isGenerating = $derived(gen.isGenerating);
@@ -307,14 +301,19 @@
 
   function handleSend(text: string) {
     if (!text.trim()) return;
-    if (isGenerating && !canQueue) return;
     if (isEditable && hasChanges) saveChanges();
     isEditable = false;
-    onSend(text);
+    if (picking) togglePick();
+    onSend(text, target);
+    target = null;
     newPrompt = '';
   }
 
   function onKeydown(event: KeyboardEvent) {
+    if (event.key === 'Escape' && picking) {
+      togglePick();
+      return;
+    }
     if (event.key === 'Escape' && isGenerating && !event.defaultPrevented) {
       onStop();
       return;
@@ -330,6 +329,78 @@
     }
   }
 
+  let comparing = $state(false);
+  let diffing = $state(false);
+
+  // ---- Element picker ----
+  let frames: (HTMLIFrameElement | undefined)[] = [];
+  let picking = $state(false);
+  let target = $state<PickedElement | null>(null);
+  const canPick = $derived(!isGenerating && !viewed && !!originalCode && !comparing);
+
+  function postToFrames(message: unknown) {
+    for (const frame of frames) frame?.contentWindow?.postMessage(message, '*');
+  }
+
+  function togglePick() {
+    if (!picking && !canPick) return;
+    picking = !picking;
+    postToFrames({ type: 'localsite:pick', on: picking });
+    if (picking && !isDesktop) activeTab = 'preview';
+  }
+
+  function onMessage(event: MessageEvent) {
+    if (!frames.some((f) => f && f.contentWindow === event.source)) return;
+    const data = event.data as { type?: string } & Partial<PickedElement>;
+    if (data?.type === 'localsite:picked' && typeof data.selector === 'string') {
+      target = {
+        selector: data.selector.slice(0, 300),
+        label: String(data.label ?? '').slice(0, 80),
+        html: String(data.html ?? '').slice(0, 4000)
+      };
+      picking = false;
+      postToFrames({ type: 'localsite:pick', on: false });
+    } else if (data?.type === 'localsite:pick-cancel') {
+      picking = false;
+    }
+  }
+
+  // A reloaded preview forgets the pick mode; leave it when the page changes
+  $effect(() => {
+    void previewContent;
+    untrack(() => {
+      if (picking) picking = false;
+    });
+  });
+
+  // ---- Compare & diff ----
+  let compareLeftN = $state<number | null>(null);
+  const focusVersion = $derived(viewed ?? session.latest);
+  const previousOf = (n: number) => [...session.versions].reverse().find((v) => v.n < n);
+  const compareRight = $derived(focusVersion);
+  const compareLeft = $derived(
+    session.byN(compareLeftN) && compareLeftN !== compareRight?.n
+      ? session.byN(compareLeftN)
+      : compareRight
+        ? (previousOf(compareRight.n) ?? session.versions.find((v) => v.n !== compareRight.n))
+        : undefined
+  );
+  const canCompare = $derived(session.versions.length > 1 && !isGenerating);
+  const diffBase = $derived(focusVersion ? previousOf(focusVersion.n) : undefined);
+
+  $effect(() => {
+    if (isGenerating || session.versions.length < 2) {
+      untrack(() => {
+        comparing = false;
+        diffing = false;
+      });
+    }
+  });
+
+  $effect(() => {
+    if (isEditable) untrack(() => (diffing = false));
+  });
+
   const codePanelProps = $derived({
     code: currentCode,
     status: gen.status,
@@ -340,8 +411,8 @@
     copySuccess,
     mod,
     versionLabel: isGenerating ? `writing v${session.nextN}` : viewed ? `viewing v${viewed.n} · read-only` : '',
-    toolbarExtra: codeToolbarExtra,
-    override: codeOverride,
+    toolbarExtra: codeToolbarExtras,
+    override: diffing && diffBase && focusVersion ? codeDiff : undefined,
     setEditable,
     onEditedCodeChange: (value: string) => {
       editedCode = value;
@@ -354,7 +425,106 @@
   });
 </script>
 
-<svelte:window onkeydown={onKeydown} />
+<svelte:window onkeydown={onKeydown} onmessage={onMessage} />
+
+{#snippet codeToolbarExtras()}
+  {#if viewed && viewed.n !== session.latest?.n && !isGenerating}
+    <button type="button" class="chip h-7 px-2.5 text-[12px]" onclick={() => onRestoreVersion(viewed.n)}>
+      <History class="h-3.5 w-3.5" /> Restore as v{session.nextN}
+    </button>
+  {/if}
+  {#if diffBase && !isGenerating && !isEditable}
+    <button
+      type="button"
+      class={cn('chip h-7 px-2.5 text-[12px]', diffing && 'border-moon/30 bg-moon/[0.12] text-moon-bright')}
+      aria-pressed={diffing}
+      onclick={() => (diffing = !diffing)}
+      title="Show changes since v{diffBase.n}"
+    >
+      <GitCompareArrows class="h-3.5 w-3.5" /> Diff vs v{diffBase.n}
+    </button>
+  {/if}
+{/snippet}
+
+{#snippet codeDiff()}
+  {#if diffBase && focusVersion}
+    <DiffEditor original={diffBase.code} modified={focusVersion.code} />
+  {/if}
+{/snippet}
+
+{#snippet previewCompare()}
+  {#if compareLeft && compareRight}
+    <CompareView
+      versions={session.versions}
+      left={compareLeft}
+      right={compareRight}
+      onPickLeft={(n) => (compareLeftN = n)}
+    />
+  {/if}
+{/snippet}
+
+{#snippet previewToolbarExtras()}
+  {#if canCompare}
+    <button
+      type="button"
+      aria-pressed={comparing}
+      onclick={() => (comparing = !comparing)}
+      title="Compare versions side by side"
+      class={cn(
+        'flex h-7 items-center gap-1.5 rounded-[7px] px-2 text-[12px] transition-colors',
+        comparing ? 'bg-moon/[0.12] text-moon-bright' : 'text-star-dim hover:bg-moon/[0.07] hover:text-star'
+      )}
+    >
+      <ArrowRightLeft class="h-3.5 w-3.5" /> <span class="hidden xl:inline">Compare</span>
+    </button>
+  {/if}
+{/snippet}
+
+{#snippet composerTools()}
+  <button
+    type="button"
+    onclick={togglePick}
+    disabled={!canPick && !picking}
+    aria-pressed={picking}
+    aria-label="Pick an element in the preview"
+    title={picking ? 'Click an element in the preview (esc to cancel)' : 'Pick an element in the preview'}
+    class={cn(
+      'flex h-8 items-center gap-1.5 rounded-[8px] px-2 text-[12px] transition-colors disabled:opacity-40',
+      picking ? 'bg-moon/[0.14] text-moon-bright' : 'text-star-dim hover:bg-moon/[0.07] hover:text-star'
+    )}
+  >
+    <Crosshair class="h-4 w-4" />
+    {#if picking}<span>Click an element…</span>{/if}
+  </button>
+{/snippet}
+
+{#snippet composerAbove()}
+  {#if queued}
+    <div class="flex items-center gap-2 rounded-[10px] border border-gold/20 bg-gold/[0.05] py-1.5 pl-2.5 pr-1.5 text-[12px]">
+      <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-gold"></span>
+      <span class="min-w-0 flex-1 truncate text-star-2" title={queued.text}>
+        {isGenerating ? `Queued for when v${session.nextN} lands` : 'Queued'} · {queued.text}
+      </span>
+      {#if !isGenerating}
+        <button type="button" class="flex h-6 items-center gap-1 rounded-md px-1.5 text-gold hover:bg-gold/10" onclick={onRunQueued}>
+          <Play class="h-3 w-3" /> Run
+        </button>
+      {/if}
+      <button type="button" aria-label="Remove queued change" class="flex h-6 w-6 items-center justify-center rounded-md text-star-dim hover:bg-moon/[0.07] hover:text-star" onclick={onCancelQueue}>
+        <X class="h-3.5 w-3.5" />
+      </button>
+    </div>
+  {/if}
+  {#if target}
+    <div class="flex items-center gap-2 self-start rounded-[8px] border border-moon/15 bg-moon/[0.06] py-1 pl-2 pr-1 font-mono text-[11px] text-moon-bright">
+      <Crosshair class="h-3 w-3" />
+      <span class="max-w-[220px] truncate" title={target.selector}>&lt;{target.label}&gt;</span>
+      <button type="button" aria-label="Clear element" class="flex h-5 w-5 items-center justify-center rounded text-star-dim hover:text-star" onclick={() => (target = null)}>
+        <X class="h-3 w-3" />
+      </button>
+    </div>
+  {/if}
+{/snippet}
 
 {#snippet statusCapsule(compact: boolean)}
   <StatusCapsule
@@ -380,7 +550,11 @@
     thinkingEndedAt={gen.thinkingEndedAt}
     code={generatedCode}
     bind:composerValue={newPrompt}
-    composerPlaceholder={composerPlaceholder ?? (isGenerating ? `Wait for v${session.nextN} to land…` : 'Describe a change…')}
+    composerPlaceholder={isGenerating
+      ? 'Queue the next change — it runs when this one lands'
+      : target
+        ? `What should change about <${target.label}>?`
+        : 'Describe a change…'}
     composerHint={isDesktop ? '' : model}
     {canQueue}
     {composerTools}
@@ -388,7 +562,7 @@
     onSend={handleSend}
     {onStop}
     {onRetry}
-    onViewVersion={onViewVersion ? (n) => onViewVersion(n === session.latest?.n ? null : n) : undefined}
+    onViewVersion={(n) => onViewVersion(n === session.latest?.n ? null : n)}
     class={className}
   />
 {/snippet}
@@ -407,9 +581,9 @@
     label={previewLabel}
     writingLine={lines}
     onOpenTab={openTab}
-    override={previewOverride}
-    toolbarExtra={previewToolbarExtra}
-    onFrames={onPreviewFrames}
+    override={comparing && compareLeft && compareRight ? previewCompare : undefined}
+    toolbarExtra={previewToolbarExtras}
+    onFrames={(f) => (frames = f)}
     class={className}
   />
 {/snippet}
@@ -507,6 +681,9 @@
       {#if activeTab !== 'thread'}
         <div class="glass rounded-t-3xl px-3.5 pb-[max(env(safe-area-inset-bottom),14px)] pt-2.5">
           <span class="mx-auto mb-2.5 block h-1 w-9 rounded-full bg-moon/20"></span>
+          {#if queued || target}
+            <div class="mb-2.5 flex flex-col gap-2">{@render composerAbove()}</div>
+          {/if}
           {#if gen.isThinking}
             <p class="mb-2.5 truncate font-mono text-[11.5px] text-[#D9C08A]">
               ✦ {gen.thinkingOutput.trim().split('\n').at(-1)}

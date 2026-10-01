@@ -16,6 +16,10 @@ export interface Version {
   stopped: boolean;
   /** Saved from the editor instead of generated */
   manual: boolean;
+  /** Version this one was restored from */
+  restoredFrom?: number;
+  /** Label of the preview element the request was aimed at */
+  target?: string;
   provider: string;
   model: string;
 }
@@ -56,6 +60,8 @@ export class Session {
   versions = $state<Version[]>([]);
   /** Prompt of the generation currently running ("" when idle) */
   pendingPrompt = $state("");
+  /** Element label the running request is aimed at */
+  pendingTarget = $state("");
   /** Version being looked at; null follows the latest / live output */
   viewing = $state<number | null>(null);
 
@@ -81,13 +87,15 @@ export class Session {
     this.viewing = null;
   }
 
-  beginTurn(prompt: string) {
+  beginTurn(prompt: string, target = "") {
     this.pendingPrompt = prompt;
+    this.pendingTarget = target;
     this.viewing = null;
   }
 
   endTurn() {
     this.pendingPrompt = "";
+    this.pendingTarget = "";
   }
 
   commit(input: {
@@ -98,6 +106,8 @@ export class Session {
     thinkingMs?: number;
     stopped?: boolean;
     manual?: boolean;
+    restoredFrom?: number;
+    target?: string;
     provider: string;
     model: string;
   }): Version {
@@ -116,12 +126,15 @@ export class Session {
       removed,
       stopped: input.stopped ?? false,
       manual: input.manual ?? false,
+      ...(input.restoredFrom ? { restoredFrom: input.restoredFrom } : {}),
+      ...(input.target ? { target: input.target } : {}),
       provider: input.provider,
       model: input.model,
     };
     this.versions.push(version);
     this.updatedAt = version.createdAt;
     this.pendingPrompt = "";
+    this.pendingTarget = "";
     return version;
   }
 
