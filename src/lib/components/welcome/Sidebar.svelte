@@ -4,6 +4,7 @@
   import { cn } from '$lib/utils';
   import MoonLogo from '$lib/components/night/MoonLogo.svelte';
   import { providerStore } from '$lib/state/providers.svelte';
+  import { themeStore } from '$lib/state/theme.svelte';
 
   interface Props {
     /** Drawer state on small screens; always visible from lg up */
@@ -75,7 +76,7 @@
       {@render children()}
     {:else}
       <p class="px-2.5 py-2 text-[12.5px] leading-relaxed text-star-dim">
-        Your generations will gather here, night after night.
+        Your generations will gather here, {themeStore.theme === 'day' ? 'day after day' : 'night after night'}.
       </p>
     {/if}
   </div>
@@ -89,7 +90,7 @@
             <span
               class={cn(
                 'h-[7px] w-[7px] rounded-full',
-                s === 'ready' ? 'bg-aurora shadow-[0_0_10px_#7DD3C0]' : 'border border-star-faint'
+                s === 'ready' ? 'bg-aurora glow-aurora' : 'border border-star-faint'
               )}
             ></span>
             {p.name} {statusLabel(p.id)}

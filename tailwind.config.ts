@@ -1,6 +1,9 @@
 import type { Config } from "tailwindcss";
 import tailwindcssAnimate from "tailwindcss-animate";
 
+// Theme colour backed by an RGB triplet variable, keeps opacity modifiers working
+const v = (name: string) => `rgb(var(--c-${name}) / <alpha-value>)`;
+
 const config = {
   darkMode: ["class"],
   content: ["./src/**/*.{html,js,svelte,ts}"],
@@ -53,31 +56,36 @@ const config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Nocturne palette
+        // Nocturne palette. Values are RGB triplets in CSS variables
+        // (src/app.css) so the Daylight theme can swap them.
         night: {
-          950: "#04060D",
-          900: "#070A14",
-          850: "#090D19",
-          800: "#0C1120",
-          700: "#111729",
-          600: "#161D33",
-          500: "#222B47",
+          950: v("night-950"),
+          900: v("night-900"),
+          850: v("night-850"),
+          800: v("night-800"),
+          700: v("night-700"),
+          600: v("night-600"),
+          500: v("night-500"),
         },
         moon: {
-          DEFAULT: "#C7D2FE",
-          bright: "#EEF1FF",
-          deep: "#A5B4FC",
+          DEFAULT: v("moon"),
+          bright: v("moon-bright"),
+          deep: v("moon-deep"),
         },
         star: {
-          DEFAULT: "#E8ECF8",
-          2: "#B9C1D9",
-          muted: "#8A93AD",
-          dim: "#7883A4",
-          faint: "#4E5878",
+          DEFAULT: v("star"),
+          2: v("star-2"),
+          muted: v("star-muted"),
+          dim: v("star-dim"),
+          faint: v("star-faint"),
         },
-        gold: "#F2D48A",
-        aurora: "#7DD3C0",
-        ember: "#F29B9B",
+        gold: v("gold"),
+        aurora: v("aurora"),
+        ember: v("ember"),
+        thought: {
+          DEFAULT: v("thought"),
+          dim: v("thought-dim"),
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -103,6 +111,10 @@ const config = {
           "85%": { opacity: "1" },
           "100%": { transform: "translateY(0)", opacity: "0" },
         },
+        drift: {
+          "0%": { transform: "translateX(-24px)" },
+          "100%": { transform: "translateX(24px)" },
+        },
         "moon-breathe": {
           "0%, 100%": { opacity: "0.65", transform: "scale(0.97)" },
           "50%": { opacity: "1", transform: "scale(1)" },
@@ -114,6 +126,8 @@ const config = {
         "caret-blink": "caret-blink 1.1s steps(1) infinite",
         scan: "scan 2.2s ease-in-out infinite",
         "moon-breathe": "moon-breathe 2.8s ease-in-out infinite",
+        drift: "drift 40s ease-in-out infinite alternate",
+        "spin-slow": "spin 8s linear infinite",
       },
     },
   },

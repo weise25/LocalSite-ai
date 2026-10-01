@@ -63,5 +63,5 @@ export function thumbnailColors(version: Version | undefined): [string, string] 
   const style = version.code.match(/<style[^>]*>([\s\S]*?)<\/style>/i)?.[1] ?? version.code;
   const colors = [...style.matchAll(/#(?:[0-9a-f]{6}|[0-9a-f]{3})\b/gi)].map((m) => m[0]);
   const unique = [...new Set(colors.map((c) => c.toLowerCase()))];
-  return [unique[0] ?? fallback[0], unique.find((c, i) => i > 0) ?? fallback[1]];
+  return [unique[0] ?? fallback[0], unique[1] ?? fallback[1]];
 }

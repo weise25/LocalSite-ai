@@ -685,7 +685,7 @@
             <div class="mb-2.5 flex flex-col gap-2">{@render composerAbove()}</div>
           {/if}
           {#if gen.isThinking}
-            <p class="mb-2.5 truncate font-mono text-[11.5px] text-[#D9C08A]">
+            <p class="mb-2.5 truncate font-mono text-[11.5px] text-thought">
               ✦ {gen.thinkingOutput.trim().split('\n').at(-1)}
             </p>
           {/if}

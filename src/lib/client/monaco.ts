@@ -1,5 +1,5 @@
 import type * as Monaco from "monaco-editor";
-import { defineNocturneTheme } from "./monaco-theme";
+import { defineDaylightTheme, defineNocturneTheme } from "./monaco-theme";
 
 let loading: Promise<typeof Monaco> | null = null;
 
@@ -31,6 +31,7 @@ export function loadMonaco(): Promise<typeof Monaco> {
     };
 
     defineNocturneTheme(monaco);
+    defineDaylightTheme(monaco);
     return monaco;
   })();
   return loading;

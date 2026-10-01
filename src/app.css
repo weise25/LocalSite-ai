@@ -29,7 +29,71 @@
   --ring: 229 96% 89% / 0.6;
   --radius: 0.75rem;
 
+  /* Nocturne (night) palette as RGB triplets */
+  --c-night-950: 4 6 13;
+  --c-night-900: 7 10 20;
+  --c-night-850: 9 13 25;
+  --c-night-800: 12 17 32;
+  --c-night-700: 17 23 41;
+  --c-night-600: 22 29 51;
+  --c-night-500: 34 43 71;
+  --c-moon: 199 210 254;
+  --c-moon-bright: 238 241 255;
+  --c-moon-deep: 165 180 252;
+  --c-star: 232 236 248;
+  --c-star-2: 185 193 217;
+  --c-star-muted: 138 147 173;
+  --c-star-dim: 120 131 164;
+  --c-star-faint: 78 88 120;
+  --c-gold: 242 212 138;
+  --c-aurora: 125 211 192;
+  --c-ember: 242 155 155;
+  --c-thought: 217 192 138;
+  --c-thought-dim: 168 149 95;
+  /* Background of a preview frame before the page paints */
+  --c-frame: 18 18 18;
+
   color-scheme: dark;
+}
+
+/*
+ * Daylight palette: the same roles, inverted. "night" stays the surface
+ * family, "moon" the accent and "star" the text, so every component
+ * follows without its own day styles.
+ */
+[data-theme="day"] {
+  --background: 220 33% 96%;
+  --foreground: 228 40% 18%;
+  --primary: 230 52% 21%;
+  --primary-foreground: 0 0% 100%;
+  --muted-foreground: 228 18% 44%;
+  --border: 230 52% 21% / 0.1;
+  --input: 230 52% 21% / 0.14;
+  --ring: 230 52% 40% / 0.5;
+
+  --c-night-950: 236 240 247;
+  --c-night-900: 255 255 255;
+  --c-night-850: 247 248 251;
+  --c-night-800: 244 246 250;
+  --c-night-700: 234 238 246;
+  --c-night-600: 221 227 239;
+  --c-night-500: 201 210 230;
+  --c-moon: 59 79 184;
+  --c-moon-bright: 26 34 82;
+  --c-moon-deep: 76 95 208;
+  --c-star: 28 35 64;
+  --c-star-2: 58 67 102;
+  --c-star-muted: 84 94 128;
+  --c-star-dim: 100 109 142;
+  --c-star-faint: 163 170 194;
+  --c-gold: 183 121 31;
+  --c-aurora: 13 138 116;
+  --c-ember: 194 65 58;
+  --c-thought: 130 86 18;
+  --c-thought-dim: 154 107 30;
+  --c-frame: 255 255 255;
+
+  color-scheme: light;
 }
 
 * {
@@ -37,7 +101,7 @@
 }
 
 html {
-  background: #04060d;
+  background: rgb(var(--c-night-950));
 }
 
 body {
@@ -46,12 +110,12 @@ body {
 }
 
 ::selection {
-  background: rgba(199, 210, 254, 0.28);
-  color: #ffffff;
+  background: rgb(var(--c-moon) / 0.28);
+  color: rgb(var(--c-moon-bright));
 }
 
 :focus-visible {
-  outline: 2px solid rgba(199, 210, 254, 0.65);
+  outline: 2px solid rgb(var(--c-moon) / 0.65);
   outline-offset: 2px;
 }
 
@@ -66,17 +130,17 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(199, 210, 254, 0.12);
+  background: rgb(var(--c-moon) / 0.14);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(199, 210, 254, 0.22);
+  background: rgb(var(--c-moon) / 0.24);
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(199, 210, 254, 0.14) transparent;
+  scrollbar-color: rgb(var(--c-moon) / 0.16) transparent;
 }
 
 @layer components {
@@ -150,14 +214,14 @@ body {
 
   /* Small pill used for provider/model/mode chips */
   .chip {
-    @apply inline-flex h-8 shrink-0 items-center gap-2 whitespace-nowrap rounded-[9px] border border-moon/10 bg-moon/[0.04] px-3 text-[12.5px] text-[#C9D0E6] transition-colors;
+    @apply inline-flex h-8 shrink-0 items-center gap-2 whitespace-nowrap rounded-[9px] border border-moon/10 bg-moon/[0.04] px-3 text-[12.5px] text-star-2 transition-colors;
   }
   .chip:hover:not(:disabled) {
     @apply border-moon/20 bg-moon/[0.08] text-star;
   }
 
   .kbd {
-    @apply inline-flex h-5 min-w-5 items-center justify-center rounded-[5px] border border-moon/15 bg-moon/[0.06] px-1.5 font-mono text-[11px] leading-none text-[#A9B2CC];
+    @apply inline-flex h-5 min-w-5 items-center justify-center rounded-[5px] border border-moon/15 bg-moon/[0.06] px-1.5 font-mono text-[11px] leading-none text-star-muted;
   }
 
   /* Uppercase mono section label */
@@ -173,9 +237,71 @@ body {
     color: transparent;
   }
 
+  /* Status glows */
+  .glow-aurora {
+    box-shadow: 0 0 10px rgb(var(--c-aurora) / 0.9);
+  }
+  .glow-gold {
+    box-shadow: 0 0 10px rgb(var(--c-gold) / 0.5);
+  }
+
+  /* Floating preview frame */
+  .frame-shadow {
+    box-shadow:
+      0 0 0 1px rgb(var(--c-moon) / 0.14),
+      0 40px 80px -30px rgba(0, 0, 0, 0.95),
+      0 0 60px -20px rgba(140, 160, 240, 0.25);
+  }
+
   .sr-only-focusable:not(:focus):not(:focus-within) {
     @apply sr-only;
   }
+}
+
+/* ---- Daylight overrides for the hand-tuned effects ---- */
+[data-theme="day"] .glass {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.74), rgba(246, 248, 253, 0.82));
+  border-color: rgba(26, 34, 82, 0.09);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 24px 60px -32px rgba(40, 60, 120, 0.38);
+}
+[data-theme="day"] .glass-solid {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 249, 253, 0.99));
+  border-color: rgba(26, 34, 82, 0.1);
+  box-shadow:
+    inset 0 1px 0 #ffffff,
+    0 30px 70px -24px rgba(40, 60, 120, 0.4);
+}
+[data-theme="day"] .glass-edge::before {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 1), transparent);
+}
+[data-theme="day"] .btn-moon {
+  background: linear-gradient(180deg, #34408a 0%, #232c66 55%, #1a2252 100%);
+  color: #ffffff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 0 0 1px rgba(26, 34, 82, 0.6),
+    0 10px 30px -10px rgba(35, 50, 130, 0.55);
+}
+[data-theme="day"] .btn-moon:hover:not(:disabled) {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 0 0 1px rgba(26, 34, 82, 0.7),
+    0 12px 36px -8px rgba(35, 50, 130, 0.7);
+}
+[data-theme="day"] .btn-moon:disabled {
+  background: rgba(26, 34, 82, 0.06);
+  color: rgb(var(--c-star-dim));
+  box-shadow: inset 0 0 0 1px rgba(26, 34, 82, 0.1);
+}
+[data-theme="day"] .text-moonlit {
+  background-image: linear-gradient(180deg, #1a2252 15%, #4c5fd0 100%);
+}
+[data-theme="day"] .frame-shadow {
+  box-shadow:
+    0 0 0 1px rgba(26, 34, 82, 0.12),
+    0 30px 60px -30px rgba(40, 60, 120, 0.45);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -190,6 +316,6 @@ body {
 
 /* Monaco: the line currently being streamed in */
 .monaco-editor .nocturne-writing-line {
-  background: linear-gradient(90deg, rgba(199, 210, 254, 0.1), rgba(199, 210, 254, 0.02));
-  box-shadow: inset 2px 0 0 #c7d2fe;
+  background: linear-gradient(90deg, rgb(var(--c-moon) / 0.12), rgb(var(--c-moon) / 0.02));
+  box-shadow: inset 2px 0 0 rgb(var(--c-moon));
 }

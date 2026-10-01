@@ -62,6 +62,72 @@ export function defineNocturneTheme(monaco: typeof Monaco) {
       "diffEditor.removedLineBackground": "#F29B9B12",
       "diffEditor.diagonalFill": "#C7D2FE10",
       "focusBorder": "#C7D2FE40",
+      "scrollbar.shadow": "#00000000",
+      "editorOverviewRuler.border": "#00000000",
+      "editorOverviewRuler.background": "#00000000",
     },
   });
+}
+
+export const DAYLIGHT_THEME = "daylight";
+
+let definedDay = false;
+
+/** Light editor theme for the Daylight UI. */
+export function defineDaylightTheme(monaco: typeof Monaco) {
+  if (definedDay) return;
+  definedDay = true;
+  monaco.editor.defineTheme(DAYLIGHT_THEME, {
+    base: "vs",
+    inherit: true,
+    rules: [
+      { token: "", foreground: "1C2340" },
+      { token: "tag", foreground: "3B4FB8" },
+      { token: "metatag", foreground: "3B4FB8" },
+      { token: "metatag.content", foreground: "8A5A12" },
+      { token: "delimiter", foreground: "7A84A6" },
+      { token: "delimiter.html", foreground: "7A84A6" },
+      { token: "attribute.name", foreground: "0D7A67" },
+      { token: "attribute.value", foreground: "8A5A12" },
+      { token: "string", foreground: "8A5A12" },
+      { token: "number", foreground: "8A5A12" },
+      { token: "keyword", foreground: "3B4FB8" },
+      { token: "type", foreground: "3B4FB8" },
+      { token: "comment", foreground: "8A93AD", fontStyle: "italic" },
+      { token: "attribute.value.css", foreground: "8A5A12" },
+      { token: "attribute.name.css", foreground: "0D7A67" },
+    ],
+    colors: {
+      "editor.background": "#00000000",
+      "editor.foreground": "#1C2340",
+      "editorGutter.background": "#00000000",
+      "editor.lineHighlightBackground": "#3B4FB80A",
+      "editor.lineHighlightBorder": "#00000000",
+      "editorLineNumber.foreground": "#B4BBD1",
+      "editorLineNumber.activeForeground": "#3B4FB8",
+      "editorCursor.foreground": "#1A2252",
+      "editor.selectionBackground": "#3B4FB82E",
+      "editor.inactiveSelectionBackground": "#3B4FB818",
+      "editorIndentGuide.background1": "#1A225212",
+      "editorIndentGuide.activeBackground1": "#1A225228",
+      "minimap.background": "#00000000",
+      "minimapSlider.background": "#1A225212",
+      "scrollbarSlider.background": "#1A22521C",
+      "scrollbarSlider.hoverBackground": "#1A22522E",
+      "editorWidget.background": "#FFFFFF",
+      "editorWidget.border": "#D5DBEA",
+      "diffEditor.insertedTextBackground": "#0D8A7426",
+      "diffEditor.removedTextBackground": "#C2413A22",
+      "diffEditor.insertedLineBackground": "#0D8A7412",
+      "diffEditor.removedLineBackground": "#C2413A10",
+      "focusBorder": "#3B4FB840",
+      "scrollbar.shadow": "#00000000",
+      "editorOverviewRuler.border": "#00000000",
+      "editorOverviewRuler.background": "#00000000",
+    },
+  });
+}
+
+export function editorTheme(theme: "day" | "night"): string {
+  return theme === "day" ? DAYLIGHT_THEME : NOCTURNE_THEME;
 }

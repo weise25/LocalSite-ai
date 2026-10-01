@@ -40,11 +40,11 @@
     <div class="flex items-center gap-2 text-[12.5px] text-gold">
       <Sparkles class="h-3.5 w-3.5" />
       Thinking
-      <span class="font-mono text-[11px] text-[#A8955F]">{formatDuration(now - startedAt)}</span>
+      <span class="font-mono text-[11px] text-thought-dim">{formatDuration(now - startedAt)}</span>
     </div>
     <div
       bind:this={body}
-      class="max-h-[132px] overflow-hidden whitespace-pre-wrap rounded-xl border border-gold/[0.12] bg-gold/[0.04] px-3 py-2.5 font-mono text-[11.5px] leading-[1.7] text-[#D9C08A]"
+      class="max-h-[132px] overflow-hidden whitespace-pre-wrap rounded-xl border border-gold/[0.12] bg-gold/[0.04] px-3 py-2.5 font-mono text-[11.5px] leading-[1.7] text-thought"
       style="mask-image: linear-gradient(180deg, transparent 0, #000 36px); -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 36px)"
     >
       {text}<span class="ml-0.5 inline-block h-3 w-1.5 translate-y-0.5 bg-gold motion-safe:animate-caret-blink"></span>
@@ -57,7 +57,7 @@
       onclick={() => (open = !open)}
       aria-expanded={open}
       aria-controls="{uid}-thoughts"
-      class="flex items-center gap-1.5 self-start text-[12.5px] text-[#A8955F] transition-colors hover:text-gold"
+      class="flex items-center gap-1.5 self-start text-[12.5px] text-thought-dim transition-colors hover:text-gold"
     >
       <ChevronRight class={cn('h-3.5 w-3.5 transition-transform', open && 'rotate-90')} />
       Thought for {seconds}s
@@ -65,7 +65,7 @@
     {#if open}
       <div
         id="{uid}-thoughts"
-        class="max-h-[260px] overflow-y-auto whitespace-pre-wrap rounded-xl border border-gold/[0.1] bg-gold/[0.03] px-3 py-2.5 font-mono text-[11.5px] leading-[1.7] text-[#CDB685] animate-in fade-in-0"
+        class="max-h-[260px] overflow-y-auto whitespace-pre-wrap rounded-xl border border-gold/[0.1] bg-gold/[0.03] px-3 py-2.5 font-mono text-[11.5px] leading-[1.7] text-thought animate-in fade-in-0"
       >
         {text}
       </div>

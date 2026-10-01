@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import type * as Monaco from 'monaco-editor';
-  import { NOCTURNE_THEME } from '$lib/client/monaco-theme';
+  import { editorTheme } from '$lib/client/monaco-theme';
+  import { themeStore } from '$lib/state/theme.svelte';
   import { EDITOR_FONT, loadMonaco } from '$lib/client/monaco';
 
   interface Props {
@@ -35,7 +36,7 @@
       editor = monaco.editor.create(container, {
         value: code,
         language: 'html',
-        theme: NOCTURNE_THEME,
+        theme: editorTheme(themeStore.theme),
         readOnly: !isEditable,
         minimap: { enabled: true, renderCharacters: false, scale: 1, maxColumn: 80 },
         scrollBeyondLastLine: false,
@@ -141,6 +142,12 @@
       isUserEditing = false;
       userScrolledAway = false;
     }
+  });
+
+  // Follow Daylight / Nocturne
+  $effect(() => {
+    const name = editorTheme(themeStore.theme);
+    void loadMonaco().then((m) => m.editor.setTheme(name));
   });
 </script>
 

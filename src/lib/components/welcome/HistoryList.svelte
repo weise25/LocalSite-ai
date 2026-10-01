@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { X } from '@lucide/svelte';
   import { historyStore, thumbnailColors } from '$lib/state/history.svelte';
+  import { themeStore } from '$lib/state/theme.svelte';
   import type { SessionSnapshot } from '$lib/state/session.svelte';
 
   interface Props {
@@ -13,8 +14,7 @@
   onMount(() => historyStore.load());
 
   const DAY = 24 * 60 * 60 * 1000;
-  const hour = new Date().getHours();
-  const recentLabel = hour >= 18 || hour < 5 ? 'Tonight' : 'Today';
+  const recentLabel = $derived(themeStore.theme === 'day' ? 'Today' : 'Tonight');
 
   const groups = $derived.by(() => {
     const now = Date.now();
@@ -37,7 +37,7 @@
 
 {#if !groups.length}
   <p class="px-2.5 py-2 text-[12.5px] leading-relaxed text-star-dim">
-    Your generations will gather here, night after night.
+    Your generations will gather here, {themeStore.theme === 'day' ? 'day after day' : 'night after night'}.
   </p>
 {:else}
   {#each groups as group, gi (group.label)}

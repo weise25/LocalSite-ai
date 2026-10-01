@@ -15,6 +15,18 @@
       href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap"
       rel="stylesheet"
     />
+    <script>
+      // Pick Daylight or Nocturne before the first paint (see lib/state/theme.svelte.ts)
+      (function () {
+        try {
+          var stored = localStorage.getItem("localsite.theme");
+          var mode = stored ? JSON.parse(stored) : "auto";
+          var hour = new Date().getHours();
+          var theme = mode === "day" || mode === "night" ? mode : hour >= 6 && hour < 18 ? "day" : "night";
+          document.documentElement.dataset.theme = theme;
+        } catch (e) {}
+      })();
+    </script>
     %sveltekit.head%
   </head>
   <body

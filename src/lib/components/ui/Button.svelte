@@ -24,7 +24,7 @@
   const variants: Record<Variant, string> = {
     default: 'btn-moon font-semibold',
     outline:
-      'border border-moon/[0.12] bg-moon/[0.04] text-[#C9D0E6] hover:border-moon/20 hover:bg-moon/[0.08] hover:text-star',
+      'border border-moon/[0.12] bg-moon/[0.04] text-star-2 hover:border-moon/20 hover:bg-moon/[0.08] hover:text-star',
     ghost: 'text-star-muted hover:bg-moon/[0.07] hover:text-star',
     secondary: 'bg-moon/10 text-star hover:bg-moon/[0.14]'
   };

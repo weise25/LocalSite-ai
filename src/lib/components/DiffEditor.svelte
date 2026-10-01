@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import type * as Monaco from 'monaco-editor';
-  import { NOCTURNE_THEME } from '$lib/client/monaco-theme';
+  import { editorTheme } from '$lib/client/monaco-theme';
+  import { themeStore } from '$lib/state/theme.svelte';
   import { EDITOR_FONT, loadMonaco } from '$lib/client/monaco';
 
   interface Props {
@@ -21,7 +22,7 @@
     void loadMonaco().then((monaco) => {
       if (disposed || !container) return;
       editor = monaco.editor.createDiffEditor(container, {
-        theme: NOCTURNE_THEME,
+        theme: editorTheme(themeStore.theme),
         readOnly: true,
         originalEditable: false,
         renderSideBySide: true,
@@ -52,6 +53,12 @@
     if (models.length !== 2) return;
     if (models[0].getValue() !== original) models[0].setValue(original);
     if (models[1].getValue() !== modified) models[1].setValue(modified);
+  });
+
+  // Follow Daylight / Nocturne
+  $effect(() => {
+    const name = editorTheme(themeStore.theme);
+    void loadMonaco().then((m) => m.editor.setTheme(name));
   });
 </script>
 

@@ -249,7 +249,7 @@
       {@render override()}
     {:else}
       <div
-        class="h-full overflow-hidden rounded-xl bg-night-900 shadow-[0_0_0_1px_rgba(199,210,254,.14),0_40px_80px_-30px_rgba(0,0,0,.95),0_0_60px_-20px_rgba(140,160,240,.25)] transition-all duration-300 {iframeWidthClass}"
+        class="h-full overflow-hidden rounded-xl bg-night-900 frame-shadow transition-all duration-300 {iframeWidthClass}"
       >
         {#if !originalCode && !editedCode}
           <div class="flex h-full w-full flex-col items-center justify-center gap-3 text-center">
@@ -270,7 +270,7 @@
               class="absolute inset-0 h-full w-full transition-opacity duration-200 ease-in-out"
               title="Preview 1"
               sandbox={iframeSandbox}
-              style="background-color: #121212; opacity: {opacity1}; z-index: {zIndex1}; pointer-events: {pointerEvents1};"
+              style="background-color: rgb(var(--c-frame)); opacity: {opacity1}; z-index: {zIndex1}; pointer-events: {pointerEvents1};"
             ></iframe>
             <iframe
               bind:this={iframe2}
@@ -279,7 +279,7 @@
               class="absolute inset-0 h-full w-full transition-opacity duration-200 ease-in-out"
               title="Preview 2"
               sandbox={iframeSandbox}
-              style="background-color: #121212; opacity: {opacity2}; z-index: {zIndex2}; pointer-events: {pointerEvents2};"
+              style="background-color: rgb(var(--c-frame)); opacity: {opacity2}; z-index: {zIndex2}; pointer-events: {pointerEvents2};"
             ></iframe>
 
             {#if isGenerating}
@@ -287,7 +287,7 @@
               <div class="pointer-events-none absolute inset-x-0 bottom-0 z-30 h-14 overflow-hidden">
                 <div
                   class="absolute inset-x-0 bottom-0 h-14 border-b border-moon-bright motion-safe:animate-scan"
-                  style="background: linear-gradient(180deg, transparent, rgba(199,210,254,.12) 80%, rgba(238,241,255,.45) 100%)"
+                  style="background: linear-gradient(180deg, transparent, rgb(var(--c-moon) / .12) 80%, rgb(var(--c-moon-bright) / .45) 100%)"
                 ></div>
               </div>
               <span

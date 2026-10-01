@@ -133,7 +133,7 @@
               : 'border-moon/[0.08] bg-night-950/40 enabled:hover:border-moon/[0.16]'
           )}
         >
-          <span class="flex h-[38px] w-[52px] shrink-0 items-center justify-center rounded-lg bg-night-950/70 shadow-[inset_0_0_0_1px_rgba(199,210,254,.08)]">
+          <span class="flex h-[38px] w-[52px] shrink-0 items-center justify-center rounded-lg bg-night-950/70 ring-1 ring-inset ring-moon/10">
             <MoonPhase phase={v.stopped ? 'half' : 'full'} size={16} />
           </span>
           <span class="flex min-w-0 flex-col gap-0.5">
@@ -189,7 +189,7 @@
                   class={cn(
                     'h-3.5 w-3.5 shrink-0 rounded-full border',
                     step.state === 'done' && 'border-star-muted bg-star-muted',
-                    step.state === 'active' && 'border-gold shadow-[0_0_10px_rgba(242,212,138,.5)] motion-safe:animate-pulse',
+                    step.state === 'active' && 'border-gold glow-gold motion-safe:animate-pulse',
                     step.state === 'pending' && 'border-star-faint'
                   )}
                 ></span>

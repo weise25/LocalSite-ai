@@ -9,6 +9,8 @@
   import PromptPalette from '$lib/components/welcome/PromptPalette.svelte';
   import { providerStore } from '$lib/state/providers.svelte';
   import { modKey } from '$lib/client/platform';
+  import { themeStore } from '$lib/state/theme.svelte';
+  import ThemeToggle from '$lib/components/ui/ThemeToggle.svelte';
 
   interface Props {
     prompt: string;
@@ -40,8 +42,7 @@
   let now = $state(new Date());
   let mod = $state('⌘');
 
-  const hour = $derived(now.getHours());
-  const timeOfDay = $derived(hour >= 18 || hour < 5 ? 'tonight' : 'today');
+  const timeOfDay = $derived(themeStore.theme === 'day' ? 'today' : 'tonight');
   const clock = $derived(
     now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   );
@@ -147,6 +148,7 @@
         <time class="font-mono text-[12px] text-star-2" datetime={now.toISOString()}>{clock}</time>
         <a href="{REPO_URL}#readme" target="_blank" rel="noreferrer" class="transition-colors hover:text-star">Docs</a>
         <a href={REPO_URL} target="_blank" rel="noreferrer" class="transition-colors hover:text-star">GitHub</a>
+        <ThemeToggle />
       </nav>
     </header>
 

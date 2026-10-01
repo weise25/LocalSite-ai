@@ -47,20 +47,20 @@
 
 <div
   bind:this={box}
-  class="relative h-full w-full overflow-hidden rounded-xl bg-night-900 shadow-[0_0_0_1px_rgba(199,210,254,.14),0_40px_80px_-30px_rgba(0,0,0,.95)]"
+  class="relative h-full w-full overflow-hidden rounded-xl bg-night-900 frame-shadow"
 >
   <iframe
     title="Version {right.n}"
     srcdoc={prepare(right.code)}
     sandbox="allow-scripts"
-    class="absolute inset-0 h-full w-full bg-[#121212]"
+    class="absolute inset-0 h-full w-full bg-[rgb(var(--c-frame))]"
     style="pointer-events: {dragging ? 'none' : 'auto'}"
   ></iframe>
   <iframe
     title="Version {left.n}"
     srcdoc={prepare(left.code)}
     sandbox="allow-scripts"
-    class="absolute inset-0 h-full w-full bg-[#121212]"
+    class="absolute inset-0 h-full w-full bg-[rgb(var(--c-frame))]"
     style="clip-path: inset(0 {100 - position}% 0 0); pointer-events: {dragging ? 'none' : 'auto'}"
   ></iframe>
 
@@ -78,7 +78,7 @@
     onpointerup={() => (dragging = false)}
     onpointercancel={() => (dragging = false)}
     onkeydown={onKeydown}
-    class="absolute top-1/2 z-10 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 cursor-ew-resize touch-none items-center justify-center rounded-full bg-moon-bright text-night-900 shadow-[0_0_0_6px_rgba(238,241,255,.15),0_8px_24px_rgba(0,0,0,.6)]"
+    class="absolute top-1/2 z-10 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 cursor-ew-resize touch-none items-center justify-center rounded-full bg-moon-bright text-night-900 shadow-[0_0_0_6px_rgb(var(--c-moon-bright)/.15),0_8px_24px_rgba(0,0,0,.4)]"
     style="left: {position}%"
   >
     <ChevronsLeftRight class="h-4 w-4" />

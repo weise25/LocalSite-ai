@@ -5,6 +5,7 @@
   import MoonLogo from '$lib/components/night/MoonLogo.svelte';
   import Popover from '$lib/components/ui/Popover.svelte';
   import Kbd from '$lib/components/ui/Kbd.svelte';
+  import ThemeToggle from '$lib/components/ui/ThemeToggle.svelte';
   import type { Version } from '$lib/state/session.svelte';
 
   interface Props {
@@ -93,9 +94,10 @@
 
   <div class="flex items-center justify-end gap-2">
     <span class="mr-1.5 hidden min-w-0 items-center gap-2 truncate font-mono text-[11.5px] text-star-muted 2xl:flex" title={providerName}>
-      <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-aurora shadow-[0_0_8px_#7DD3C0]"></span>
+      <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-aurora glow-aurora"></span>
       <span class="truncate">{model}</span>
     </span>
+    <ThemeToggle class="h-[34px] w-[34px]" />
     {#if generating}
       <button type="button" class="chip h-[34px] rounded-[9px]" onclick={onStop}>
         <Square class="h-3 w-3 fill-current" /> Stop <Kbd>esc</Kbd>

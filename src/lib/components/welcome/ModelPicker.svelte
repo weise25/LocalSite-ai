@@ -184,7 +184,7 @@
   function dotClass(p: ProviderInfo): string {
     const s = providerStore.status[p.id];
     if (!p.configured || s === 'error') return 'border border-star-faint';
-    if (p.isLocal && s === 'ready') return 'bg-aurora shadow-[0_0_10px_#7DD3C0]';
+    if (p.isLocal && s === 'ready') return 'bg-aurora glow-aurora';
     return 'bg-star-muted';
   }
 

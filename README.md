@@ -38,8 +38,14 @@ the AI will create a complete, self-contained web page for you.
 - **Code Editing**: Edit the generated code directly in the browser
 - **Multiple AI Providers**: Support for DeepSeek, custom OpenAI-compatible
   APIs, and local models
+- **Iterate in versions**: Follow-up prompts revise the current page; every
+  result is a version you can view, diff, compare side by side or restore
+- **Queue and pick**: Queue the next change while one is still writing, or
+  pick an element in the preview to aim a change at it
+- **History**: Past sessions are kept in your browser and listed in the sidebar
 - **Responsive Design**: Works on desktop and mobile devices
-- **Modern UI**: Clean, dark-themed interface with a focus on usability
+- **Nocturne & Daylight**: A night-sky interface after dark and a daylight one
+  by day — switched automatically, or pinned with the theme toggle
 
 ## Tech Stack
 
@@ -247,13 +253,17 @@ with [ngrok](https://ngrok.com).**
 
 ## Usage
 
-1. Enter a prompt describing what kind of website you want to create.
-2. Select an AI provider and model from the dropdown menu.
-3. Click "GENERATE".
-4. Wait for the code to be generated.
-5. View the live preview and adjust the viewport (Desktop, Tablet, Mobile).
-6. Toggle edit mode to modify the code if needed.
-7. Copy the code or download it as an HTML file.
+1. Describe the website you want to create.
+2. Pick a provider and model from the chip below the prompt — or type `@`
+   followed by a provider or model name (e.g. `@qw`, `@anthropic/`).
+3. Choose a mode (Default, Thinking, Custom system prompt) and an optional
+   token limit, then press Generate (⌘/Ctrl + Enter).
+4. Watch the reasoning, code and preview stream in; press Esc to stop.
+5. Describe changes in the thread to create new versions. Use the crosshair
+   to aim a change at one element of the preview.
+6. Use Diff, Compare and the version pills to look back; restore any version.
+7. Edit the code directly (⌘/Ctrl + S saves a new version) and export it
+   (download, copy or open in a new tab).
 
 ## Roadmap
 
@@ -271,15 +281,15 @@ with [ngrok](https://ngrok.com).**
 - [ ] Choose between different Frameworks and Libraries (React, Vue, Angular,
       etc.)
 - [ ] File-based code generation (multiple files)
-- [ ] Save and load projects
-- [ ] Agentic diff-editing capabilities
+- [x] Save and load projects (browser history of sessions)
+- [x] Iterative editing of the current version with diffs
 
 ### UI/UX Improvements
 
-- [ ] Dark/Light theme toggle
+- [x] Dark/Light theme toggle (Nocturne / Daylight, automatic by time of day)
 - [ ] Customizable code editor settings
 - [ ] Drag-and-drop interface for UI components
-- [ ] History of generated code
+- [x] History of generated code
 
 ### Accessibility
 

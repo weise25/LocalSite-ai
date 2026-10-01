@@ -185,7 +185,7 @@
             class={cn(
               'h-[7px] w-[7px] shrink-0 rounded-full',
               providerInfo?.isLocal && providerStatus === 'ready'
-                ? 'bg-aurora shadow-[0_0_8px_#7DD3C0]'
+                ? 'bg-aurora glow-aurora'
                 : providerStatus === 'error'
                   ? 'border border-ember'
                   : 'bg-star-muted'
