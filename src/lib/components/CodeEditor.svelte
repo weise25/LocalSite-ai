@@ -1,18 +1,25 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import type * as Monaco from 'monaco-editor';
+  import { editorTheme } from '$lib/client/monaco-theme';
+  import { themeStore } from '$lib/state/theme.svelte';
+  import { EDITOR_FONT, loadMonaco } from '$lib/client/monaco';
 
   interface Props {
     code: string;
     isEditable?: boolean;
+    /** Highlights the line currently being written */
+    streaming?: boolean;
     onChange?: (value: string) => void;
+    onSave?: () => void;
   }
 
-  let { code, isEditable = false, onChange }: Props = $props();
+  let { code, isEditable = false, streaming = false, onChange, onSave }: Props = $props();
 
   let container = $state<HTMLDivElement>();
   let editor: Monaco.editor.IStandaloneCodeEditor | null = null;
   let monaco: typeof Monaco | null = null;
+  let writingLine: Monaco.editor.IEditorDecorationsCollection | null = null;
   let isInitialMount = true;
   let isUserEditing = false;
   let userScrolledAway = false;
@@ -22,32 +29,33 @@
     let disposed = false;
 
     (async () => {
-      // Configure Monaco's web workers for Vite (ESM)
-      const [monacoMod, EditorWorker] = await Promise.all([
-        import('monaco-editor'),
-        import('monaco-editor/esm/vs/editor/editor.worker?worker')
-      ]);
-
-      if (disposed) return;
+      const monacoMod = await loadMonaco();
+      if (disposed || !container) return;
       monaco = monacoMod;
-
-      self.MonacoEnvironment = {
-        getWorker: () => new EditorWorker.default()
-      };
-
-      if (!container) return;
 
       editor = monaco.editor.create(container, {
         value: code,
         language: 'html',
-        theme: 'vs-dark',
+        theme: editorTheme(themeStore.theme),
         readOnly: !isEditable,
-        minimap: { enabled: false },
+        minimap: { enabled: true, renderCharacters: false, scale: 1, maxColumn: 80 },
         scrollBeyondLastLine: false,
-        fontSize: 14,
+        ...EDITOR_FONT,
+        padding: { top: 12, bottom: 12 },
+        renderLineHighlight: 'line',
+        guides: { indentation: true },
+        smoothScrolling: true,
+        cursorBlinking: 'smooth',
+        overviewRulerBorder: false,
+        hideCursorInOverviewRuler: true,
+        scrollbar: { verticalScrollbarSize: 8, horizontalScrollbarSize: 8, useShadows: false },
         wordWrap: 'on',
         automaticLayout: true
       });
+
+      writingLine = editor.createDecorationsCollection();
+
+      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => onSave?.());
 
       // Scroll to the end on initial load
       const model = editor.getModel();
@@ -87,9 +95,28 @@
     editor?.dispose();
   });
 
+  function markWritingLine() {
+    if (!editor || !writingLine || !monaco) return;
+    const model = editor.getModel();
+    if (!streaming || !model) {
+      writingLine.clear();
+      return;
+    }
+    const line = model.getLineCount();
+    writingLine.set([
+      {
+        range: new monaco.Range(line, 1, line, 1),
+        options: { isWholeLine: true, className: 'nocturne-writing-line' }
+      }
+    ]);
+  }
+
   function syncEditorContent(next: string) {
     if (!editor) return;
-    if (editor.getValue() === next) return;
+    if (editor.getValue() === next) {
+      markWritingLine();
+      return;
+    }
 
     suppressChange = true;
     editor.setValue(next);
@@ -99,10 +126,12 @@
     if (!isUserEditing && !isEditable && !userScrolledAway && model) {
       editor.revealLine(model.getLineCount());
     }
+    markWritingLine();
   }
 
   // Sync external `code` changes into the editor without firing onChange
   $effect(() => {
+    void streaming;
     syncEditorContent(code);
   });
 
@@ -113,6 +142,12 @@
       isUserEditing = false;
       userScrolledAway = false;
     }
+  });
+
+  // Follow Daylight / Nocturne
+  $effect(() => {
+    const name = editorTheme(themeStore.theme);
+    void loadMonaco().then((m) => m.editor.setTheme(name));
   });
 </script>
 

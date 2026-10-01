@@ -2,38 +2,121 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Nocturne design tokens.
+ * The shadcn-style HSL variables are kept so the ui/ primitives keep working;
+ * the night/moon/star palette lives in tailwind.config.ts.
+ */
 :root {
-  --background: 0 0% 3.9%;
-  --foreground: 0 0% 98%;
-  --card: 0 0% 3.9%;
-  --card-foreground: 0 0% 98%;
-  --popover: 0 0% 3.9%;
-  --popover-foreground: 0 0% 98%;
-  --primary: 0 0% 100%;
-  --primary-foreground: 0 0% 0%;
-  --secondary: 240 3.7% 15.9%;
-  --secondary-foreground: 0 0% 98%;
-  --muted: 0 0% 14.9%;
-  --muted-foreground: 0 0% 63.9%;
-  --accent: 0 0% 100%;
-  --accent-foreground: 0 0% 9%;
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 0 0% 98%;
-  --border: 240 3.7% 15.9%;
-  --input: 240 3.7% 15.9%;
-  --ring: 0 0% 80%;
-  --radius: 0.5rem;
+  --background: 228 48% 5%;
+  --foreground: 226 47% 94%;
+  --card: 226 46% 8%;
+  --card-foreground: 226 47% 94%;
+  --popover: 226 46% 9%;
+  --popover-foreground: 226 47% 94%;
+  --primary: 229 96% 89%;
+  --primary-foreground: 228 48% 5%;
+  --secondary: 226 40% 13%;
+  --secondary-foreground: 226 47% 94%;
+  --muted: 226 40% 13%;
+  --muted-foreground: 225 18% 61%;
+  --accent: 229 96% 89%;
+  --accent-foreground: 229 100% 97%;
+  --destructive: 0 75% 78%;
+  --destructive-foreground: 228 48% 5%;
+  --border: 229 96% 89% / 0.1;
+  --input: 229 96% 89% / 0.12;
+  --ring: 229 96% 89% / 0.6;
+  --radius: 0.75rem;
+
+  /* Nocturne (night) palette as RGB triplets */
+  --c-night-950: 4 6 13;
+  --c-night-900: 7 10 20;
+  --c-night-850: 9 13 25;
+  --c-night-800: 12 17 32;
+  --c-night-700: 17 23 41;
+  --c-night-600: 22 29 51;
+  --c-night-500: 34 43 71;
+  --c-moon: 199 210 254;
+  --c-moon-bright: 238 241 255;
+  --c-moon-deep: 165 180 252;
+  --c-star: 232 236 248;
+  --c-star-2: 185 193 217;
+  --c-star-muted: 138 147 173;
+  --c-star-dim: 120 131 164;
+  --c-star-faint: 78 88 120;
+  --c-gold: 242 212 138;
+  --c-aurora: 125 211 192;
+  --c-ember: 242 155 155;
+  --c-thought: 217 192 138;
+  --c-thought-dim: 168 149 95;
+  /* Background of a preview frame before the page paints */
+  --c-frame: 18 18 18;
+
+  color-scheme: dark;
+}
+
+/*
+ * Daylight palette: the same roles, inverted. "night" stays the surface
+ * family, "moon" the accent and "star" the text, so every component
+ * follows without its own day styles.
+ */
+[data-theme="day"] {
+  --background: 220 33% 96%;
+  --foreground: 228 40% 18%;
+  --primary: 230 52% 21%;
+  --primary-foreground: 0 0% 100%;
+  --muted-foreground: 228 18% 44%;
+  --border: 230 52% 21% / 0.1;
+  --input: 230 52% 21% / 0.14;
+  --ring: 230 52% 40% / 0.5;
+
+  --c-night-950: 236 240 247;
+  --c-night-900: 255 255 255;
+  --c-night-850: 247 248 251;
+  --c-night-800: 244 246 250;
+  --c-night-700: 234 238 246;
+  --c-night-600: 221 227 239;
+  --c-night-500: 201 210 230;
+  --c-moon: 59 79 184;
+  --c-moon-bright: 26 34 82;
+  --c-moon-deep: 76 95 208;
+  --c-star: 28 35 64;
+  --c-star-2: 58 67 102;
+  --c-star-muted: 84 94 128;
+  --c-star-dim: 100 109 142;
+  --c-star-faint: 163 170 194;
+  --c-gold: 183 121 31;
+  --c-aurora: 13 138 116;
+  --c-ember: 194 65 58;
+  --c-thought: 130 86 18;
+  --c-thought-dim: 154 107 30;
+  --c-frame: 255 255 255;
+
+  color-scheme: light;
 }
 
 * {
   @apply border-border;
 }
 
+html {
+  background: rgb(var(--c-night-950));
+}
+
 body {
-  @apply bg-background text-foreground;
-  font-family:
-    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-feature-settings: "rlig" 1, "calt" 1;
+  @apply bg-night-950 font-sans text-star antialiased;
+  font-feature-settings: "ss01" 1, "cv11" 1;
+}
+
+::selection {
+  background: rgb(var(--c-moon) / 0.28);
+  color: rgb(var(--c-moon-bright));
+}
+
+:focus-visible {
+  outline: 2px solid rgb(var(--c-moon) / 0.65);
+  outline-offset: 2px;
 }
 
 /* Custom scrollbar */
@@ -43,94 +126,196 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: hsl(var(--background));
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted));
+  background: rgb(var(--c-moon) / 0.14);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--secondary));
+  background: rgb(var(--c-moon) / 0.24);
 }
 
-/* ---- Welcome view animations (ported from styled-jsx) ---- */
-@keyframes pulse-slow {
-  0%,
-  100% {
-    opacity: 0.8;
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--c-moon) / 0.16) transparent;
+}
+
+@layer components {
+  /* Frosted panel floating over the night sky */
+  .glass {
+    background: linear-gradient(180deg, rgba(16, 22, 40, 0.8), rgba(9, 13, 26, 0.86));
+    border: 1px solid rgba(199, 210, 254, 0.09);
+    box-shadow:
+      inset 0 1px 0 rgba(238, 241, 255, 0.06),
+      0 24px 70px -30px rgba(0, 0, 0, 0.9);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
   }
-  50% {
-    opacity: 0.6;
+
+  /* Popovers, menus and dialogs need more opacity to stay readable */
+  .glass-solid {
+    background: linear-gradient(180deg, rgba(17, 23, 42, 0.97), rgba(10, 14, 28, 0.98));
+    border: 1px solid rgba(199, 210, 254, 0.12);
+    box-shadow:
+      inset 0 1px 0 rgba(238, 241, 255, 0.07),
+      0 30px 80px -20px rgba(0, 0, 0, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  /* Hairline of light along the top edge of a glass panel */
+  .glass-edge {
+    position: relative;
+  }
+  .glass-edge::before {
+    content: "";
+    position: absolute;
+    left: 10%;
+    right: 10%;
+    top: -1px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(238, 241, 255, 0.55), transparent);
+    pointer-events: none;
+  }
+
+  /* Moon-silver primary action */
+  .btn-moon {
+    background: linear-gradient(180deg, #ffffff 0%, #dce3fb 55%, #b7c3ec 100%);
+    color: #070a14;
+    box-shadow:
+      inset 0 1px 0 #ffffff,
+      inset 0 -1px 0 rgba(7, 10, 20, 0.15),
+      0 0 0 1px rgba(199, 210, 254, 0.5),
+      0 10px 40px -10px rgba(160, 180, 255, 0.65);
+    transition:
+      box-shadow 0.2s ease,
+      transform 0.2s ease,
+      filter 0.2s ease;
+  }
+  .btn-moon:hover:not(:disabled) {
+    filter: brightness(1.04);
+    box-shadow:
+      inset 0 1px 0 #ffffff,
+      inset 0 -1px 0 rgba(7, 10, 20, 0.15),
+      0 0 0 1px rgba(199, 210, 254, 0.7),
+      0 12px 48px -8px rgba(160, 180, 255, 0.85);
+  }
+  .btn-moon:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+  .btn-moon:disabled {
+    background: rgba(199, 210, 254, 0.1);
+    color: #7883a4;
+    box-shadow: inset 0 0 0 1px rgba(199, 210, 254, 0.1);
+  }
+
+  /* Small pill used for provider/model/mode chips */
+  .chip {
+    @apply inline-flex h-8 shrink-0 items-center gap-2 whitespace-nowrap rounded-[9px] border border-moon/10 bg-moon/[0.04] px-3 text-[12.5px] text-star-2 transition-colors;
+  }
+  .chip:hover:not(:disabled) {
+    @apply border-moon/20 bg-moon/[0.08] text-star;
+  }
+
+  .kbd {
+    @apply inline-flex h-5 min-w-5 items-center justify-center rounded-[5px] border border-moon/15 bg-moon/[0.06] px-1.5 font-mono text-[11px] leading-none text-star-muted;
+  }
+
+  /* Uppercase mono section label */
+  .label-mono {
+    @apply font-mono text-[10.5px] uppercase tracking-[0.14em] text-star-dim;
+  }
+
+  /* Silver gradient type for the serif headline */
+  .text-moonlit {
+    background: linear-gradient(180deg, #ffffff 10%, #b8c3ee 95%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Status glows */
+  .glow-aurora {
+    box-shadow: 0 0 10px rgb(var(--c-aurora) / 0.9);
+  }
+  .glow-gold {
+    box-shadow: 0 0 10px rgb(var(--c-gold) / 0.5);
+  }
+
+  /* Floating preview frame */
+  .frame-shadow {
+    box-shadow:
+      0 0 0 1px rgb(var(--c-moon) / 0.14),
+      0 40px 80px -30px rgba(0, 0, 0, 0.95),
+      0 0 60px -20px rgba(140, 160, 240, 0.25);
+  }
+
+  .sr-only-focusable:not(:focus):not(:focus-within) {
+    @apply sr-only;
   }
 }
 
-.animate-pulse-slow {
-  animation: pulse-slow 8s ease-in-out infinite;
+/* ---- Daylight overrides for the hand-tuned effects ---- */
+[data-theme="day"] .glass {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.74), rgba(246, 248, 253, 0.82));
+  border-color: rgba(26, 34, 82, 0.09);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 24px 60px -32px rgba(40, 60, 120, 0.38);
+}
+[data-theme="day"] .glass-solid {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 249, 253, 0.99));
+  border-color: rgba(26, 34, 82, 0.1);
+  box-shadow:
+    inset 0 1px 0 #ffffff,
+    0 30px 70px -24px rgba(40, 60, 120, 0.4);
+}
+[data-theme="day"] .glass-edge::before {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 1), transparent);
+}
+[data-theme="day"] .btn-moon {
+  background: linear-gradient(180deg, #34408a 0%, #232c66 55%, #1a2252 100%);
+  color: #ffffff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 0 0 1px rgba(26, 34, 82, 0.6),
+    0 10px 30px -10px rgba(35, 50, 130, 0.55);
+}
+[data-theme="day"] .btn-moon:hover:not(:disabled) {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 0 0 1px rgba(26, 34, 82, 0.7),
+    0 12px 36px -8px rgba(35, 50, 130, 0.7);
+}
+[data-theme="day"] .btn-moon:disabled {
+  background: rgba(26, 34, 82, 0.06);
+  color: rgb(var(--c-star-dim));
+  box-shadow: inset 0 0 0 1px rgba(26, 34, 82, 0.1);
+}
+[data-theme="day"] .text-moonlit {
+  background-image: linear-gradient(180deg, #1a2252 15%, #4c5fd0 100%);
+}
+[data-theme="day"] .frame-shadow {
+  box-shadow:
+    0 0 0 1px rgba(26, 34, 82, 0.12),
+    0 30px 60px -30px rgba(40, 60, 120, 0.45);
 }
 
-@keyframes typing {
-  from {
-    width: 0;
-  }
-  to {
-    width: 100%;
-  }
-}
-
-.pre-animation {
-  overflow: hidden;
-  white-space: nowrap;
-  width: 0;
-  border-right: 4px solid transparent;
-}
-
-.typing-animation {
-  overflow: hidden;
-  white-space: nowrap;
-  border-right: 4px solid #fff;
-  animation: typing 1.75s steps(40, end), blink-caret 0.75s step-end infinite;
-}
-
-@keyframes blink-caret {
-  from,
-  to {
-    border-color: transparent;
-  }
-  50% {
-    border-color: #fff;
-  }
-}
-
-/* ---- Loading screen glitch animation (ported from styled-jsx) ---- */
-@keyframes glitch {
-  0% {
-    transform: translate(0);
-    text-shadow: 0 0 5px #fff;
-  }
-  20% {
-    transform: translate(-2px, 2px);
-    text-shadow: 2px 0 5px #fff, -2px 0 5px #fff;
-  }
-  40% {
-    transform: translate(-2px, -2px);
-    text-shadow: 2px 0 5px #fff, -2px 0 5px #fff, 0 0 10px #fff;
-  }
-  60% {
-    transform: translate(2px, 2px);
-    text-shadow: 2px 0 5px #fff, -2px 0 5px #fff, 0 0 15px #fff;
-  }
-  80% {
-    transform: translate(2px, -2px);
-    text-shadow: 2px 0 5px #fff, -2px 0 5px #fff;
-  }
-  100% {
-    transform: translate(0);
-    text-shadow: 0 0 5px #fff;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
   }
 }
 
-.glitch {
-  animation: glitch 0.3s linear forwards;
+/* Monaco: the line currently being streamed in */
+.monaco-editor .nocturne-writing-line {
+  background: linear-gradient(90deg, rgb(var(--c-moon) / 0.12), rgb(var(--c-moon) / 0.02));
+  box-shadow: inset 2px 0 0 rgb(var(--c-moon));
 }

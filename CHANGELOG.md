@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.7.0] - Unreleased
+
+### Changed
+
+- **Runtime: Deno → Node.js 24.** `deno.json` / `deno.lock` removed; npm
+  scripts are the toolchain (`npm ci`, `npm run dev|build|check|lint`,
+  `npm start`). `.nvmrc` and `engines` require Node 24.
+- **`package-lock.json` is now committed**, and `.npmrc` sets
+  `ignore-scripts=true` so dependency install scripts never run — the same
+  protection Deno gave by default (see SECURITY.md).
+- **Linting: `deno lint` → ESLint 9** with typescript-eslint and
+  eslint-plugin-svelte (`eslint.config.js`).
+- **Docker:** multi-stage `node:24-slim` image (`npm ci`, build, prune dev
+  dependencies); health check uses Node's `fetch`.
+- **`npm start` loads `.env`** via `node --env-file-if-exists=.env`, so the
+  production `.env` (also the one the Docker entrypoint writes) is applied.
+- **Nocturne & Daylight redesign:** new welcome screen with @-picker,
+  three-pane workspace, versions with diff/compare/restore, iterative
+  follow-ups, queued changes, element picker, session history, automatic
+  day/night theme.
+
+### Fixed
+
+- **Error page showed no message.** `+error.svelte` read `error`/`status`
+  props that SvelteKit never passes; it now reads them from `page`.
+
 ## [0.6.2] - 2026-06-18
 
 ### Fixed

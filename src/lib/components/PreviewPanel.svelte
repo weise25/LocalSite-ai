@@ -1,7 +1,9 @@
 <script lang="ts">
   import { untrack, onDestroy } from 'svelte';
-  import { Laptop, Smartphone, Tablet, RefreshCw, Loader2 } from '@lucide/svelte';
-  import Button from '$lib/components/ui/Button.svelte';
+  import type { Snippet } from 'svelte';
+  import { ExternalLink, Laptop, RefreshCw, Smartphone, Tablet } from '@lucide/svelte';
+  import { cn } from '$lib/utils';
+  import MoonPhase from '$lib/components/night/MoonPhase.svelte';
 
   interface Props {
     generationComplete: boolean;
@@ -13,6 +15,18 @@
     previewContent: string;
     refreshPreview: () => void;
     setViewportSize: (size: 'desktop' | 'tablet' | 'mobile') => void;
+    /** Short status shown in the toolbar pill, e.g. "live · v3" */
+    label?: string;
+    /** Current line count while streaming, shown on the write-head */
+    writingLine?: number;
+    onOpenTab?: () => void;
+    /** Replaces the live frames (e.g. version compare) */
+    override?: Snippet;
+    /** Extra toolbar controls */
+    toolbarExtra?: Snippet;
+    /** Exposes the two buffered iframes (for the element picker) */
+    onFrames?: (frames: (HTMLIFrameElement | undefined)[]) => void;
+    class?: string;
   }
 
   let {
@@ -24,8 +38,21 @@
     previewKey,
     previewContent,
     refreshPreview,
-    setViewportSize
+    setViewportSize,
+    label = '',
+    writingLine = 0,
+    onOpenTab,
+    override,
+    toolbarExtra,
+    onFrames,
+    class: className = ''
   }: Props = $props();
+
+  const viewports = [
+    { id: 'desktop', label: 'Desktop view', icon: Laptop },
+    { id: 'tablet', label: 'Tablet view', icon: Tablet },
+    { id: 'mobile', label: 'Mobile view', icon: Smartphone }
+  ] as const;
 
   const iframeWidthClass = $derived(
     viewportSize === 'desktop'
@@ -42,6 +69,10 @@
 
   let iframe1 = $state<HTMLIFrameElement>();
   let iframe2 = $state<HTMLIFrameElement>();
+
+  $effect(() => {
+    onFrames?.([iframe1, iframe2]);
+  });
 
   // Manual opacity and z-index control for seamless crossfading
   let opacity1 = $state(1);
@@ -142,7 +173,7 @@
           opacity2 = 0;
         }, 200);
       }
-    } catch (e) {
+    } catch {
       activeFrame = frameNumber as 1 | 2;
       // Fallback
       if (activeFrame === 1) {
@@ -157,100 +188,117 @@
   }
 </script>
 
-<div class="flex h-full flex-col">
-  <!-- Preview Toolbar -->
-  <div class="flex items-center justify-between border-b border-gray-800 bg-gray-900/50 p-2">
-    <h2 class="text-sm font-medium">LIVE PREVIEW</h2>
-    <div class="flex items-center gap-1">
-      {#if generationComplete}
-        <Button
-          variant="ghost"
-          size="sm"
-          class="mr-2 h-7 px-2 text-gray-400 hover:text-white"
-          onclick={refreshPreview}
-          title="Refresh preview"
+<section class={cn('glass flex h-full min-h-0 flex-col overflow-hidden rounded-2xl', className)} aria-label="Preview">
+  <div class="flex h-[42px] shrink-0 items-center justify-between gap-2 border-b border-moon/[0.07] px-2">
+    <div class="flex rounded-[9px] bg-night-950/50 p-[3px]" role="group" aria-label="Viewport">
+      {#each viewports as vp (vp.id)}
+        <button
+          type="button"
+          aria-label={vp.label}
+          aria-pressed={viewportSize === vp.id}
+          onclick={() => setViewportSize(vp.id)}
+          class={cn(
+            'flex h-[26px] w-8 items-center justify-center rounded-[7px] transition-colors',
+            viewportSize === vp.id ? 'bg-moon/10 text-moon-bright' : 'text-star-dim hover:text-star-2'
+          )}
         >
-          <RefreshCw class="mr-1 h-4 w-4" />
-          <span class="hidden text-xs sm:inline">Refresh</span>
-        </Button>
+          <vp.icon class="h-3.5 w-3.5" />
+        </button>
+      {/each}
+    </div>
+
+    {#if label}
+      <span class="flex h-7 min-w-0 items-center gap-2 truncate rounded-lg bg-night-950/50 px-3 font-mono text-[11.5px] text-star-muted">
+        {#if isGenerating}
+          <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-gold motion-safe:animate-pulse"></span>
+        {/if}
+        {label}
+      </span>
+    {/if}
+
+    <div class="flex items-center gap-0.5">
+      {#if toolbarExtra}{@render toolbarExtra()}{/if}
+      <button
+        type="button"
+        onclick={refreshPreview}
+        disabled={!generationComplete}
+        aria-label="Reload preview"
+        title="Reload preview"
+        class="flex h-7 w-8 items-center justify-center rounded-[7px] text-star-dim transition-colors hover:bg-moon/[0.07] hover:text-star disabled:opacity-40"
+      >
+        <RefreshCw class="h-3.5 w-3.5" />
+      </button>
+      {#if onOpenTab}
+        <button
+          type="button"
+          onclick={onOpenTab}
+          disabled={!originalCode && !editedCode}
+          aria-label="Open in new tab"
+          title="Open in new tab"
+          class="flex h-7 w-8 items-center justify-center rounded-[7px] text-star-dim transition-colors hover:bg-moon/[0.07] hover:text-star disabled:opacity-40"
+        >
+          <ExternalLink class="h-3.5 w-3.5" />
+        </button>
       {/if}
-      <Button
-        variant={viewportSize === 'desktop' ? 'secondary' : 'ghost'}
-        size="sm"
-        class="h-7 w-7 p-0"
-        aria-label="Desktop view"
-        onclick={() => setViewportSize('desktop')}
-      >
-        <Laptop class="h-4 w-4" />
-      </Button>
-      <Button
-        variant={viewportSize === 'tablet' ? 'secondary' : 'ghost'}
-        size="sm"
-        class="h-7 w-7 p-0"
-        aria-label="Tablet view"
-        onclick={() => setViewportSize('tablet')}
-      >
-        <Tablet class="h-4 w-4" />
-      </Button>
-      <Button
-        variant={viewportSize === 'mobile' ? 'secondary' : 'ghost'}
-        size="sm"
-        class="h-7 w-7 p-0"
-        aria-label="Mobile view"
-        onclick={() => setViewportSize('mobile')}
-      >
-        <Smartphone class="h-4 w-4" />
-      </Button>
     </div>
   </div>
 
   <!-- Iframe Viewport Area -->
-  <div class="flex flex-1 items-center justify-center overflow-hidden p-3">
-    <div
-      class="overflow-hidden rounded-md border border-gray-800 bg-gray-900 transition-all duration-300 {iframeWidthClass}"
-    >
-      {#if !originalCode && !editedCode}
-        <div class="flex h-full w-full items-center justify-center bg-gray-900 text-gray-400">
-          {#if isGenerating}
-            <div class="text-center">
-              <Loader2 class="mx-auto mb-2 h-8 w-8 animate-spin" />
-              <p>Generating preview...</p>
-            </div>
-          {:else}
-            <p>No preview available yet</p>
-          {/if}
-        </div>
-      {:else}
-        <div class="relative h-full w-full">
-          <iframe
-            bind:this={iframe1}
-            srcdoc={content1}
-            onload={() => handleIframeLoad(1)}
-            class="absolute inset-0 h-full w-full transition-opacity duration-200 ease-in-out"
-            title="Preview 1"
-            sandbox={iframeSandbox}
-            style="background-color: #121212; opacity: {opacity1}; z-index: {zIndex1}; pointer-events: {pointerEvents1};"
-          ></iframe>
-          <iframe
-            bind:this={iframe2}
-            srcdoc={content2}
-            onload={() => handleIframeLoad(2)}
-            class="absolute inset-0 h-full w-full transition-opacity duration-200 ease-in-out"
-            title="Preview 2"
-            sandbox={iframeSandbox}
-            style="background-color: #121212; opacity: {opacity2}; z-index: {zIndex2}; pointer-events: {pointerEvents2};"
-          ></iframe>
+  <div class="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-3 sm:p-[18px]">
+    {#if override}
+      {@render override()}
+    {:else}
+      <div
+        class="h-full overflow-hidden rounded-xl bg-night-900 frame-shadow transition-all duration-300 {iframeWidthClass}"
+      >
+        {#if !originalCode && !editedCode}
+          <div class="flex h-full w-full flex-col items-center justify-center gap-3 text-center">
+            {#if isGenerating}
+              <MoonPhase phase="waxing" size={34} />
+              <p class="text-[13px] text-star-muted">The page appears here as it is written.</p>
+            {:else}
+              <MoonPhase phase="new" size={34} />
+              <p class="text-[13px] text-star-dim">No preview yet.</p>
+            {/if}
+          </div>
+        {:else}
+          <div class="relative h-full w-full">
+            <iframe
+              bind:this={iframe1}
+              srcdoc={content1}
+              onload={() => handleIframeLoad(1)}
+              class="absolute inset-0 h-full w-full transition-opacity duration-200 ease-in-out"
+              title="Preview 1"
+              sandbox={iframeSandbox}
+              style="background-color: rgb(var(--c-frame)); opacity: {opacity1}; z-index: {zIndex1}; pointer-events: {pointerEvents1};"
+            ></iframe>
+            <iframe
+              bind:this={iframe2}
+              srcdoc={content2}
+              onload={() => handleIframeLoad(2)}
+              class="absolute inset-0 h-full w-full transition-opacity duration-200 ease-in-out"
+              title="Preview 2"
+              sandbox={iframeSandbox}
+              style="background-color: rgb(var(--c-frame)); opacity: {opacity2}; z-index: {zIndex2}; pointer-events: {pointerEvents2};"
+            ></iframe>
 
-          {#if isGenerating}
-            <div
-              class="absolute bottom-4 right-4 z-20 flex items-center rounded-full bg-gray-800/80 px-3 py-1 text-xs text-white"
-            >
-              <Loader2 class="mr-1 h-3 w-3 animate-spin" />
-              Updating preview...
-            </div>
-          {/if}
-        </div>
-      {/if}
-    </div>
+            {#if isGenerating}
+              <!-- Write-head: new markup lands at the end of the document -->
+              <div class="pointer-events-none absolute inset-x-0 bottom-0 z-30 h-14 overflow-hidden">
+                <div
+                  class="absolute inset-x-0 bottom-0 h-14 border-b border-moon-bright motion-safe:animate-scan"
+                  style="background: linear-gradient(180deg, transparent, rgb(var(--c-moon) / .12) 80%, rgb(var(--c-moon-bright) / .45) 100%)"
+                ></div>
+              </div>
+              <span
+                class="absolute bottom-3 right-3 z-30 rounded-md bg-night-950/80 px-2 py-1 font-mono text-[10.5px] text-moon backdrop-blur"
+              >
+                writing{writingLine ? ` · line ${writingLine}` : '…'}
+              </span>
+            {/if}
+          </div>
+        {/if}
+      </div>
+    {/if}
   </div>
-</div>
+</section>

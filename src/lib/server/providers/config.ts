@@ -181,6 +181,19 @@ export function isProviderConfigured(provider: LLMProvider): boolean {
   }
 }
 
+// Whether a provider was switched off via DISABLED_PROVIDERS
+export function isProviderDisabled(provider: LLMProvider): boolean {
+  return getDisabledProviders().includes(provider);
+}
+
+// All providers that are not explicitly disabled, configured or not.
+// Lets the UI show cloud providers that only lack an API key.
+export function getSelectableProviders(): ProviderConfig[] {
+  return Object.values(PROVIDER_CONFIGS).filter((config) =>
+    !isProviderDisabled(config.id)
+  );
+}
+
 // List of all available providers (only those that are configured)
 export function getAvailableProviders(): ProviderConfig[] {
   return Object.values(PROVIDER_CONFIGS).filter((config) =>

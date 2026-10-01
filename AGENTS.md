@@ -30,11 +30,13 @@ LocalSite-AI generates complete, self-contained HTML/CSS/JS web pages from
 natural language prompts using AI. Users pick a provider and model, describe
 what they want, and get a live preview with an editable Monaco code editor.
 
-**Tech stack:** SvelteKit 2, Svelte 5 (runes), Deno 2, Tailwind CSS 3,
+**Tech stack:** SvelteKit 2, Svelte 5 (runes), Node.js 24, Tailwind CSS 3,
 Vercel AI SDK v5, Monaco Editor, Paneforge, svelte-sonner, @lucide/svelte.
 
-**Runtime:** Deno 2 (`deno task dev/build/check/lint`). `package.json` retains
-npm scripts for compatibility but Deno is the primary toolchain.
+**Runtime:** Node.js 24 with npm (`.nvmrc`, `engines` in `package.json`).
+`package-lock.json` is committed; install with `npm ci`. `.npmrc` sets
+`ignore-scripts=true` (supply-chain safety, see SECURITY.md) and
+`engine-strict=true` — do not add dependencies that need install scripts.
 
 ## Architecture
 
@@ -52,18 +54,32 @@ src/
   lib/
     state/
       code-generation.svelte.ts   CodeGeneration class (rune-based state)
+      session.svelte.ts           Session: versions of the current generation
+      history.svelte.ts           Past sessions in localStorage (sidebar)
+      providers.svelte.ts         Providers, models, local server status
+      theme.svelte.ts             Daylight / Nocturne mode (auto by time)
+    client/                       Browser helpers: storage, Monaco loader and
+                                  themes, export, element picker script
     server/providers/
       config.ts                   LLMProvider enum, config registry, env helpers
       provider.ts                 9 provider client classes, generateCodeStream()
       prompts.ts                  DEFAULT_SYSTEM_PROMPT, THINKING_SYSTEM_PROMPT
     components/
-      [see README for full component list]
-    ui/                           8 hand-rolled primitives (Button, Select, etc.)
+      WelcomeView, GenerationView, CodePanel, PreviewPanel, CodeEditor,
+      DiffEditor, LoadingScreen
+      night/                      Sky (stars or day sky), moon/sun, MoonPhase
+      welcome/                    PromptPalette, ModelPicker (@-picker),
+                                  ModeMenu, TokensMenu, Sidebar, HistoryList
+      workspace/                  WorkspaceHeader, StatusCapsule, ThreadPanel,
+                                  ReasoningBlock, Composer, CompareView
+      ui/                         Hand-rolled primitives (Button, Dialog,
+                                  Popover, Kbd, ThemeToggle, ...)
 ```
 
 ### Data Flow
 
-1. WelcomeView loads providers (POST /api/get-models) and models (GET
+1. WelcomeView loads providers (POST /api/get-models, every non-disabled
+   provider with a `configured` flag) and models (GET
    /api/get-models?provider=X). Models cached in sessionStorage.
 2. User clicks GENERATE -> CodeGeneration.generateCode() POSTs to
    /api/generate-code.
@@ -72,6 +88,9 @@ src/
 4. Client accumulates chunks reactively. GenerationView debounces preview
    updates (1s throttle during streaming).
 5. PreviewPanel uses double-buffered iframes with z-index/opacity crossfade.
+6. A finished (or stopped) generation is committed to the `Session` as a
+   version and the session is saved to history. Follow-ups send the latest
+   version as `previousCode`; the server wraps it in an iteration prompt.
 
 ### Key Patterns
 
@@ -89,11 +108,12 @@ src/
 ## Development Commands
 
 ```bash
-deno task dev        # Start dev server (localhost:5173)
-deno task build      # Production build to build/
-deno task check      # TypeScript + Svelte type checking
-deno task lint       # Deno linter
-deno task start      # Run production server (build/index.js)
+npm ci              # Install exactly what package-lock.json pins
+npm run dev         # Start dev server (localhost:5173)
+npm run build       # Production build to build/
+npm run check       # TypeScript + Svelte type checking (svelte-check)
+npm run lint        # ESLint (eslint.config.js: JS, TypeScript, Svelte)
+npm start           # Production server; loads .env if present
 ```
 
 ## Important Gotchas
@@ -122,6 +142,11 @@ making changes in these areas.
 - **Fast-forward CSS** (`animation-duration: 0.001s`) is injected during
   streaming to prevent entrance animations from trapping elements invisible.
   Removed when generation completes.
+- **Element picker** script (`lib/client/element-picker.ts`) is injected into
+  the preview only when not streaming, never into exports. The parent only
+  accepts `postMessage` events whose `source` is one of the two preview frames.
+- **Compare view and "open in new tab"** render pages in iframes sandboxed
+  *without* `allow-same-origin`, so generated code cannot read app storage.
 
 ### Provider System
 
@@ -138,7 +163,8 @@ making changes in these areas.
 ### State Management
 
 - **`CodeGeneration` class** holds all generation state as `$state()` fields.
-  It has `abort()` and `reset()` methods for cancellation and restart.
+  It has `abort()` and `reset()` for cancellation and restart, `stop()` to
+  end early but keep the partial page, and `load()` to show a stored version.
 - **AbortController** prevents mixed output from parallel generations. Always
   abort the previous request before starting a new one.
 - **`stripFences()`** removes markdown code fences. Run it once at the END of
@@ -146,18 +172,30 @@ making changes in these areas.
 
 ### Tailwind / Styling
 
-- **Dark mode only.** `class="dark"` on `<html>` in `app.html`. No toggle yet.
-- **Fonts:** Inter (body) and Space Mono (headings) loaded in `app.html`.
-  Do not add additional font imports.
-- **CSS variables** defined in `app.css` (`--background`, `--foreground`, etc.)
-  and consumed by Tailwind via `hsl(var(--...))` in `tailwind.config.ts`.
+- **Two themes: Nocturne (night) and Daylight (day).** `data-theme` on
+  `<html>` is set before first paint by an inline script in `app.html` and
+  kept in sync by `+layout.svelte` from `themeStore` (auto: day 06:00–17:59).
+- **Palette roles, not literal colours:** `night-*` = surfaces, `moon*` =
+  accent, `star*` = text, plus `gold`, `aurora`, `ember`, `thought`. They are
+  RGB triplets in CSS variables (`--c-*` in `app.css`), redefined under
+  `[data-theme="day"]`. Use these tokens instead of hex values so both themes
+  work; hand-tuned effects (`.glass`, `.btn-moon`, `.text-moonlit`,
+  `.frame-shadow`) have explicit day overrides in `app.css`.
+- **Changing `tailwind.config.ts` needs a dev-server restart**, otherwise
+  Vite keeps serving classes compiled from the old config.
+- **Fonts:** Geist (UI), Geist Mono (code, labels) and Instrument Serif
+  (headlines) loaded in `app.html`. Do not add additional font imports.
+- **Monaco themes** `nocturne` / `daylight` live in `lib/client/monaco-theme.ts`;
+  `lib/client/monaco.ts` loads Monaco once and registers the HTML/CSS workers
+  (without them Monaco throws "reading 'toUrl'" in the console).
 
 ### Docker
 
 - **Dockerfile uses `COPY`** (not `git clone`). Local builds use local code.
 - **Container runs as non-root** (`appuser`). Add files before the `USER`
   directive.
-- **`BODY_SIZE_LIMIT`** is set via environment variable (100K default), not
+- **`BODY_SIZE_LIMIT`** is set via environment variable (1M in
+  `docker-compose.yml`, because follow-ups send the current page), not
   in `svelte.config.js` (SvelteKit 2 does not support `kit.bodySizeLimit`).
 - **`host.docker.internal:host-gateway`** in `docker-compose.yml` enables
   access to Ollama/LM Studio on the host machine.

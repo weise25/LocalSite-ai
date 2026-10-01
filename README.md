@@ -7,23 +7,21 @@
 > date, see [SECURITY.md](./SECURITY.md) to check and remediate.
 
 > [!CAUTION]
-> **v0.6.0 — Breaking changes:** This release replaces the entire Next.js /
-> React stack with **SvelteKit + Svelte 5** and moves the runtime to **Deno 2**.
-> Features and all 9 AI provider integrations are unchanged — only the
-> toolchain and project structure differ.
+> **v0.7.0 — Back to Node.js:** The runtime moves from Deno to **Node.js 24**
+> with npm. The SvelteKit + Svelte 5 code base is unchanged.
 >
-> **If you are upgrading from v0.5.x or earlier:**
+> **If you are upgrading from v0.6.x:**
 >
-> 1. Install [Deno 2.x](https://deno.com/) — Node.js and npm are no longer
->    required.
-> 2. Pull the latest code and run `deno install` (replaces `npm install`).
-> 3. Keep your existing `.env.local` (dev) or `.env` (production) — environment
->    variable names are unchanged.
-> 4. Use `deno task dev`, `deno task build`, and `deno task start` instead of
->    npm scripts.
+> 1. Install [Node.js 24](https://nodejs.org/) (or run `nvm use` — the repo
+>    ships an `.nvmrc`).
+> 2. Pull the latest code, delete `node_modules`, then run `npm ci`.
+> 3. Keep your existing `.env.local` (dev) or `.env` (production) — variable
+>    names are unchanged.
+> 4. Use `npm run dev`, `npm run build` and `npm start` instead of
+>    `deno task …`.
 > 5. For Docker deployments, rebuild your images (`docker compose up --build`).
 >
-> See the [Changelog](./CHANGELOG.md) for the full migration details.
+> See the [Changelog](./CHANGELOG.md) for details.
 
 A modern web application that uses AI to generate HTML, CSS, and JavaScript code
 based on natural language prompts. Simply describe what you want to build, and
@@ -38,13 +36,19 @@ the AI will create a complete, self-contained web page for you.
 - **Code Editing**: Edit the generated code directly in the browser
 - **Multiple AI Providers**: Support for DeepSeek, custom OpenAI-compatible
   APIs, and local models
+- **Iterate in versions**: Follow-up prompts revise the current page; every
+  result is a version you can view, diff, compare side by side or restore
+- **Queue and pick**: Queue the next change while one is still writing, or
+  pick an element in the preview to aim a change at it
+- **History**: Past sessions are kept in your browser and listed in the sidebar
 - **Responsive Design**: Works on desktop and mobile devices
-- **Modern UI**: Clean, dark-themed interface with a focus on usability
+- **Nocturne & Daylight**: A night-sky interface after dark and a daylight one
+  by day — switched automatically, or pinned with the theme toggle
 
 ## Tech Stack
 
 - [SvelteKit](https://svelte.dev/docs/kit) (Svelte 5 with runes)
-- [Deno](https://deno.com/) runtime and toolchain
+- [Node.js 24](https://nodejs.org/) with npm
 - [Tailwind CSS](https://tailwindcss.com/)
 - [Vercel AI SDK](https://sdk.vercel.ai/) (provider streaming)
 - [Monaco Editor](https://microsoft.github.io/monaco-editor/)
@@ -53,7 +57,7 @@ the AI will create a complete, self-contained web page for you.
 
 ### Prerequisites
 
-- [Deno](https://deno.com/) (version 2.x or higher)
+- [Node.js](https://nodejs.org/) 24 or newer (npm is included)
 - [Ollama](https://ollama.com/download/) or [LM Studio](https://lmstudio.ai/)
   installed
 - OR an API key from one of the supported providers (see below)
@@ -66,10 +70,12 @@ the AI will create a complete, self-contained web page for you.
    cd LocalSite-ai
    ```
 
-2. Install the dependencies:
+2. Install the dependencies (exactly as pinned in `package-lock.json`):
    ```bash
-   deno install
+   npm ci
    ```
+   Dependency install scripts are disabled in `.npmrc` for supply-chain
+   safety; nothing in this project needs them.
 
 3. Rename the `.env.example` file in the root directory to `.env.local` and add
    your API key:
@@ -90,7 +96,7 @@ the AI will create a complete, self-contained web page for you.
 
 4. Start the development server:
    ```bash
-   deno task dev
+   npm run dev
    ```
 
 5. Open [http://localhost:5173](http://localhost:5173) in your browser.
@@ -216,17 +222,21 @@ OPENAI_COMPATIBLE_MODEL=gpt-4o-mini
 
 ## Deployment
 
-This is a SvelteKit app built with `@sveltejs/adapter-node`. `deno task build`
-produces a standalone server in `build/`, which you run with:
+This is a SvelteKit app built with `@sveltejs/adapter-node`. `npm run build`
+produces a server in `build/`, which you run with:
 
 ```bash
-deno task build
-deno run -A build/index.js   # listens on port 3000 (set PORT to override)
+npm run build
+npm start   # node --env-file-if-exists=.env build — port 3000 (set PORT to override)
 ```
+
+`npm start` loads a `.env` file next to `package.json` if there is one;
+variables already set in the environment take precedence.
 
 ### Docker
 
-A `Dockerfile` and `docker-compose.yml` are included (Deno-based). With Docker
+A `Dockerfile` (multi-stage, `node:24-slim`) and `docker-compose.yml` are
+included. With Docker
 running:
 
 ```bash
@@ -235,9 +245,8 @@ docker compose up --build
 
 ### Other hosting options
 
-- [Deno Deploy](https://deno.com/deploy)
-- Any host that can run a Deno (or Node) process and serve the
-  `adapter-node` output
+- Any host that can run a Node.js 24 process and serve the `adapter-node`
+  output
 - Swap in a different [SvelteKit adapter](https://svelte.dev/docs/kit/adapters)
   (Vercel, Netlify, Cloudflare) if you prefer a serverless target
 
@@ -247,13 +256,17 @@ with [ngrok](https://ngrok.com).**
 
 ## Usage
 
-1. Enter a prompt describing what kind of website you want to create.
-2. Select an AI provider and model from the dropdown menu.
-3. Click "GENERATE".
-4. Wait for the code to be generated.
-5. View the live preview and adjust the viewport (Desktop, Tablet, Mobile).
-6. Toggle edit mode to modify the code if needed.
-7. Copy the code or download it as an HTML file.
+1. Describe the website you want to create.
+2. Pick a provider and model from the chip below the prompt — or type `@`
+   followed by a provider or model name (e.g. `@qw`, `@anthropic/`).
+3. Choose a mode (Default, Thinking, Custom system prompt) and an optional
+   token limit, then press Generate (⌘/Ctrl + Enter).
+4. Watch the reasoning, code and preview stream in; press Esc to stop.
+5. Describe changes in the thread to create new versions. Use the crosshair
+   to aim a change at one element of the preview.
+6. Use Diff, Compare and the version pills to look back; restore any version.
+7. Edit the code directly (⌘/Ctrl + S saves a new version) and export it
+   (download, copy or open in a new tab).
 
 ## Roadmap
 
@@ -271,15 +284,15 @@ with [ngrok](https://ngrok.com).**
 - [ ] Choose between different Frameworks and Libraries (React, Vue, Angular,
       etc.)
 - [ ] File-based code generation (multiple files)
-- [ ] Save and load projects
-- [ ] Agentic diff-editing capabilities
+- [x] Save and load projects (browser history of sessions)
+- [x] Iterative editing of the current version with diffs
 
 ### UI/UX Improvements
 
-- [ ] Dark/Light theme toggle
+- [x] Dark/Light theme toggle (Nocturne / Daylight, automatic by time of day)
 - [ ] Customizable code editor settings
 - [ ] Drag-and-drop interface for UI components
-- [ ] History of generated code
+- [x] History of generated code
 
 ### Accessibility
 

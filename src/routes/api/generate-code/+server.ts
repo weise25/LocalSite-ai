@@ -1,7 +1,6 @@
 import type { RequestHandler } from "./$types";
 import {
   isProviderConfigured,
-  LLMProvider,
   parseLLMProvider,
   resolveDefaultProvider,
 } from "$lib/server/providers/config";
@@ -12,6 +11,7 @@ import {
 } from "$lib/server/providers/prompts";
 
 const MAX_PROMPT_LENGTH = 100_000;
+const MAX_PREVIOUS_CODE_LENGTH = 500_000;
 const MAX_MODEL_LENGTH = 256;
 const MAX_SYSTEM_PROMPT_LENGTH = 100_000;
 const MAX_TOKENS = 128_000;
@@ -22,6 +22,19 @@ function jsonError(message: string, status: number): Response {
     status,
     headers: { "Content-Type": "application/json" },
   });
+}
+
+// Follow-up requests revise the current page instead of starting over
+function buildIterationPrompt(previousCode: string, request: string): string {
+  return `Here is the current version of the website as a single HTML file:
+
+<current_file>
+${previousCode}
+</current_file>
+
+Revise this file according to the request below. Keep everything that the request does not ask to change. Return the complete, updated HTML file.
+
+Request: ${request}`;
 }
 
 function streamErrorMessage(error: unknown): string {
@@ -39,6 +52,7 @@ export const POST: RequestHandler = async ({ request }) => {
       customSystemPrompt: rawCustomSystemPrompt,
       maxTokens,
       systemPromptType,
+      previousCode: rawPreviousCode,
     } = await request.json();
 
     if (typeof rawPrompt !== "string") {
@@ -55,6 +69,17 @@ export const POST: RequestHandler = async ({ request }) => {
     if (prompt.length > MAX_PROMPT_LENGTH) {
       return jsonError(
         `Prompt exceeds maximum length of ${MAX_PROMPT_LENGTH} characters`,
+        400,
+      );
+    }
+
+    if (rawPreviousCode !== undefined && rawPreviousCode !== null && typeof rawPreviousCode !== "string") {
+      return jsonError("previousCode must be a string", 400);
+    }
+    const previousCode = typeof rawPreviousCode === "string" ? rawPreviousCode.trim() : "";
+    if (previousCode.length > MAX_PREVIOUS_CODE_LENGTH) {
+      return jsonError(
+        `previousCode exceeds maximum length of ${MAX_PREVIOUS_CODE_LENGTH} characters`,
         400,
       );
     }
@@ -137,7 +162,7 @@ export const POST: RequestHandler = async ({ request }) => {
     const result = await generateCodeStream(
       provider,
       model,
-      prompt,
+      previousCode ? buildIterationPrompt(previousCode, prompt) : prompt,
       finalSystemPrompt,
       parsedMaxTokens,
     );

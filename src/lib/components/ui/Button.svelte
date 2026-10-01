@@ -22,22 +22,23 @@
   }: Props = $props();
 
   const variants: Record<Variant, string> = {
-    default: 'bg-primary text-primary-foreground hover:bg-primary/90',
-    outline: 'border border-input bg-transparent hover:bg-accent/10 hover:text-accent-foreground',
-    ghost: 'hover:bg-accent/10 hover:text-accent-foreground',
-    secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+    default: 'btn-moon font-semibold',
+    outline:
+      'border border-moon/[0.12] bg-moon/[0.04] text-star-2 hover:border-moon/20 hover:bg-moon/[0.08] hover:text-star',
+    ghost: 'text-star-muted hover:bg-moon/[0.07] hover:text-star',
+    secondary: 'bg-moon/10 text-star hover:bg-moon/[0.14]'
   };
 
   const sizes: Record<Size, string> = {
     default: 'h-10 px-4 py-2',
-    sm: 'h-9 rounded-md px-3',
+    sm: 'h-8 rounded-[9px] px-3 text-[12.5px]',
     icon: 'h-10 w-10'
   };
 </script>
 
 <button
   class={cn(
-    'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
+    'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[10px] text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50',
     variants[variant],
     sizes[size],
     className

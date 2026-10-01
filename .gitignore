@@ -30,11 +30,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 
-package-lock.json
 unused-components.md
 
 # OS
 .DS_Store
 
-# Deno
-deno.lock.bak
