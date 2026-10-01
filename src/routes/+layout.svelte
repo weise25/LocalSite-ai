@@ -6,10 +6,16 @@
 </script>
 
 <svelte:head>
-  <title>AI Code Generator</title>
-  <meta name="description" content="Modern AI-powered code generation web app" />
+  <title>LocalSite AI</title>
+  <meta name="description" content="Generate complete websites from a prompt — with local or cloud models." />
 </svelte:head>
 
-<Toaster position="top-right" theme="dark" richColors />
+<Toaster
+  position="top-right"
+  theme="dark"
+  toastOptions={{
+    class: 'glass-solid !rounded-[14px] !border-moon/[0.12] !text-star !font-sans'
+  }}
+/>
 
 {@render children?.()}

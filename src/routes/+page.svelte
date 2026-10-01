@@ -5,16 +5,40 @@
   import WelcomeView from '$lib/components/WelcomeView.svelte';
   import GenerationView from '$lib/components/GenerationView.svelte';
   import { CodeGeneration } from '$lib/state/code-generation.svelte';
+  import { readJSON, writeJSON } from '$lib/client/storage';
 
   let isLoading = $state(true);
   let showGenerationView = $state(false);
 
+  interface Preferences {
+    provider?: string;
+    model?: string;
+    systemPrompt?: string;
+    customSystemPrompt?: string;
+    maxTokens?: number;
+  }
+
+  // SSR is disabled, so storage is available while the component initialises
+  const PREFS_KEY = 'localsite.prefs';
+  const prefs = readJSON<Preferences>(PREFS_KEY, {});
+
   let prompt = $state('');
-  let selectedProvider = $state('');
-  let selectedModel = $state('');
-  let selectedSystemPrompt = $state('default');
-  let customSystemPrompt = $state('');
-  let maxTokens = $state<number | undefined>(undefined);
+  let selectedProvider = $state(prefs.provider ?? '');
+  let selectedModel = $state(prefs.model ?? '');
+  let selectedSystemPrompt = $state(prefs.systemPrompt ?? 'default');
+  let customSystemPrompt = $state(prefs.customSystemPrompt ?? '');
+  let maxTokens = $state<number | undefined>(prefs.maxTokens);
+
+  // Remember the last provider, model and mode across visits
+  $effect(() => {
+    writeJSON(PREFS_KEY, {
+      provider: selectedProvider,
+      model: selectedModel,
+      systemPrompt: selectedSystemPrompt,
+      customSystemPrompt,
+      maxTokens
+    } satisfies Preferences);
+  });
 
   const gen = new CodeGeneration();
 

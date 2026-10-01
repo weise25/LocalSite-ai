@@ -1,17 +1,14 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, type Snippet } from 'svelte';
   import { toast } from 'svelte-sonner';
-  import Textarea from '$lib/components/ui/Textarea.svelte';
-  import Input from '$lib/components/ui/Input.svelte';
-  import Button from '$lib/components/ui/Button.svelte';
-  import Select from '$lib/components/ui/Select.svelte';
-  import Combobox, { type ComboboxItem } from '$lib/components/ui/Combobox.svelte';
-  import ProviderSelector from '$lib/components/ProviderSelector.svelte';
-
-  interface Model {
-    id: string;
-    name: string;
-  }
+  import { Menu } from '@lucide/svelte';
+  import NightSky from '$lib/components/night/NightSky.svelte';
+  import MoonPhase from '$lib/components/night/MoonPhase.svelte';
+  import Kbd from '$lib/components/ui/Kbd.svelte';
+  import Sidebar from '$lib/components/welcome/Sidebar.svelte';
+  import PromptPalette from '$lib/components/welcome/PromptPalette.svelte';
+  import { providerStore } from '$lib/state/providers.svelte';
+  import { modKey } from '$lib/client/platform';
 
   interface Props {
     prompt: string;
@@ -21,6 +18,8 @@
     customSystemPrompt: string;
     maxTokens: number | undefined;
     onGenerate: () => void;
+    /** Optional history list rendered inside the sidebar */
+    history?: Snippet;
   }
 
   let {
@@ -30,213 +29,185 @@
     selectedSystemPrompt = $bindable('default'),
     customSystemPrompt = $bindable(''),
     maxTokens = $bindable<number | undefined>(undefined),
-    onGenerate
+    onGenerate,
+    history
   }: Props = $props();
 
-  let titleClass = $state('pre-animation');
-  let models = $state<Model[]>([]);
-  let isLoadingModels = $state(false);
+  const REPO_URL = 'https://github.com/weise25/LocalSite-ai';
 
-  const modelItems = $derived<ComboboxItem[]>(models.map((m) => ({ value: m.id, label: m.name })));
+  let palette = $state<ReturnType<typeof PromptPalette>>();
+  let sidebarOpen = $state(false);
+  let now = $state(new Date());
+  let mod = $state('⌘');
 
-  const systemPromptItems = [
-    { value: 'default', label: 'Default', description: 'Standard code generation' },
-    { value: 'thinking', label: 'Thinking', description: 'Makes non thinking models think' },
-    { value: 'custom', label: 'Custom System Prompt', description: 'Specify a custom System Prompt' }
+  const hour = $derived(now.getHours());
+  const timeOfDay = $derived(hour >= 18 || hour < 5 ? 'tonight' : 'today');
+  const clock = $derived(
+    now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  );
+
+  const providerInfo = $derived(providerStore.byId(selectedProvider));
+  const modelCount = $derived(providerStore.models[selectedProvider]?.length ?? 0);
+  const providerStatus = $derived(providerStore.status[selectedProvider]);
+
+  const starters = [
+    {
+      name: 'Product launch',
+      hint: 'Hero, features, waitlist',
+      thumb: 'linear-gradient(180deg,#E9E2D6 62%,#1A1714 62%)',
+      prompt:
+        'A launch page for a minimalist e-ink note-taking tablet. Calm, paper-like palette, big product hero, three feature rows with illustrations, a waitlist form and an FAQ.'
+    },
+    {
+      name: 'Portfolio',
+      hint: 'Case studies, about',
+      thumb: 'linear-gradient(180deg,#1D2420 58%,#D7E3D2 58%)',
+      prompt:
+        'A portfolio for an independent architect. Editorial serif typography, a full-width project grid with hover captions, an about section with a portrait placeholder and a contact footer.'
+    },
+    {
+      name: 'Event night',
+      hint: 'Lineup, tickets, map',
+      thumb: 'linear-gradient(180deg,#16193A 55%,#C9D3FF 55%)',
+      prompt:
+        'A page for an open-air night concert by the river. Dark, starry atmosphere, a countdown, the lineup with set times, ticket tiers and a simple map of the venue.'
+    }
   ];
 
   onMount(() => {
-    const timer = setTimeout(() => (titleClass = 'typing-animation'), 100);
-    return () => clearTimeout(timer);
-  });
+    mod = modKey();
+    const timer = setInterval(() => (now = new Date()), 30_000);
 
-  // Load models when the provider changes
-  $effect(() => {
-    const provider = selectedProvider;
-    if (!provider) return;
-
-    // Check sessionStorage cache first
-    const cacheKey = `models_${provider}`;
-    const cached = sessionStorage.getItem(cacheKey);
-    if (cached) {
-      try {
-        const cachedModels: Model[] = JSON.parse(cached);
-        models = cachedModels;
-        if (cachedModels.length > 0 && !selectedModel) {
-          selectedModel = cachedModels[0].id;
-        }
+    void (async () => {
+      await providerStore.loadProviders();
+      if (providerStore.providersError) {
+        toast.error('Providers could not be loaded.');
         return;
-      } catch {
-        sessionStorage.removeItem(cacheKey);
       }
-    }
-
-    let cancelled = false;
-    (async () => {
-      isLoadingModels = true;
-      selectedModel = '';
-      models = [];
-
-      try {
-        const response = await fetch(`/api/get-models?provider=${provider}`);
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data?.error || 'Error fetching models');
-        }
-
-        if (cancelled) return;
-
-        sessionStorage.setItem(cacheKey, JSON.stringify(data));
-        models = data;
-        if (data.length > 0) selectedModel = data[0].id;
-      } catch (error) {
-        if (cancelled) return;
-        console.error('Error fetching models:', error);
-        models = [];
-        selectedModel = '';
-
-        if (error instanceof Error) {
-          const msg = error.message;
-          if (msg.includes('Ollama')) {
-            toast.error('Cannot connect to Ollama. Is the server running?');
-          } else if (msg.includes('LM Studio')) {
-            toast.error('Cannot connect to LM Studio. Is the server running?');
-          } else if (provider === 'deepseek' || provider === 'openai_compatible') {
-            toast.error('Make sure the Base URL and API Keys are correct in your .env.local file.');
-          } else {
-            toast.error('Models could not be loaded. Please try again later.');
-          }
-        } else {
-          toast.error('Models could not be loaded. Please try again later.');
-        }
-      } finally {
-        if (!cancelled) isLoadingModels = false;
+      const configured = providerStore.providers.filter((p) => p.configured);
+      if (!providerStore.byId(selectedProvider)?.configured) {
+        const fallback = providerStore.byId(providerStore.defaultProvider);
+        selectedProvider = fallback?.configured ? fallback.id : (configured[0]?.id ?? '');
+      }
+      // Wake-check local servers so the sidebar can show their state
+      for (const p of providerStore.providers) {
+        if (p.isLocal && p.configured && p.id !== selectedProvider) void providerStore.loadModels(p.id);
       }
     })();
 
-    return () => {
-      cancelled = true;
-    };
+    return () => clearInterval(timer);
   });
 
-  function handleProviderChange() {
-    selectedModel = '';
+  // Load models for the selected provider and keep the model valid
+  $effect(() => {
+    const provider = selectedProvider;
+    if (!provider || !providerStore.providersLoaded) return;
+    void providerStore.loadModels(provider).then((models) => {
+      if (provider !== selectedProvider) return;
+      if (providerStore.status[provider] === 'error') {
+        toast.error(providerStore.errors[provider] || 'Models could not be loaded.');
+        return;
+      }
+      if (models.length && !models.some((m) => m.id === selectedModel)) {
+        selectedModel = models[0].id;
+      }
+    });
+  });
+
+  function useStarter(text: string) {
+    prompt = text;
+    palette?.focus();
   }
 
-  function handleGenerateClick() {
-    if (selectedSystemPrompt === 'custom' && !customSystemPrompt.trim()) {
-      toast.error('Please enter a custom system prompt.');
-      return;
-    }
-    onGenerate();
-  }
-
-  function onMaxTokensInput(event: Event) {
-    const raw = (event.target as HTMLInputElement).value;
-    const value = raw ? parseInt(raw, 10) : undefined;
-    maxTokens = value && !isNaN(value) && value > 0 ? value : undefined;
+  function newGeneration() {
+    prompt = '';
+    sidebarOpen = false;
+    palette?.focus();
   }
 </script>
 
-<div
-  class="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-black p-4"
->
-  <!-- Animated background -->
-  <div
-    class="animate-pulse-slow absolute inset-0 z-0 bg-gradient-to-br from-black via-gray-900 to-black"
-  ></div>
+<div class="relative min-h-dvh overflow-hidden bg-night-950 text-star">
+  <NightSky variant="full" moon horizon class="fixed" />
 
-  <!-- Content -->
-  <div class="relative z-10 mx-auto flex w-full max-w-2xl flex-col items-center">
-    <h1
-      class="mb-12 text-4xl font-bold tracking-wider text-white md:text-6xl {titleClass}"
-      style="font-family: 'Space Mono', monospace"
-    >
-      WHAT ARE WE BUILDING?
-    </h1>
+  <Sidebar open={sidebarOpen} onClose={() => (sidebarOpen = false)} onNew={newGeneration}>
+    {#if history}{@render history()}{/if}
+  </Sidebar>
 
-    <div class="relative mb-6 w-full">
-      <Textarea
-        bind:value={prompt}
-        placeholder="Describe the website you want to create..."
-        class="min-h-[150px] w-full border-gray-800 bg-gray-900/80 pr-[120px] text-white placeholder:text-gray-500 transition-all duration-300 focus-visible:border-white focus-visible:ring-white"
-      />
-      <Button
-        onclick={handleGenerateClick}
-        disabled={!prompt.trim() || !selectedModel || (selectedSystemPrompt === 'custom' && !customSystemPrompt.trim())}
-        class="absolute bottom-4 right-4 rounded-md border border-gray-800 bg-gray-900/90 px-12 py-3 text-base font-medium tracking-wider text-white transition-all duration-300 hover:border-gray-700 hover:bg-gray-800"
+  <div class="relative flex min-h-dvh flex-col lg:pl-[282px]">
+    <header class="flex items-center justify-between gap-4 px-4 py-4 sm:px-9 sm:py-6">
+      <button
+        type="button"
+        aria-label="Open sidebar"
+        onclick={() => (sidebarOpen = true)}
+        class="flex h-11 w-11 items-center justify-center rounded-xl text-star-2 hover:bg-moon/[0.07] lg:invisible"
       >
-        GENERATE
-      </Button>
-    </div>
+        <Menu class="h-5 w-5" />
+      </button>
+      <nav class="flex items-center gap-5 text-[13px] text-star-muted sm:gap-6">
+        <time class="font-mono text-[12px] text-star-2" datetime={now.toISOString()}>{clock}</time>
+        <a href="{REPO_URL}#readme" target="_blank" rel="noreferrer" class="transition-colors hover:text-star">Docs</a>
+        <a href={REPO_URL} target="_blank" rel="noreferrer" class="transition-colors hover:text-star">GitHub</a>
+      </nav>
+    </header>
 
-    <ProviderSelector bind:selectedProvider onProviderChange={handleProviderChange} />
-
-    <div class="mb-4 w-full">
-      <label for="model-combobox" class="mb-2 block text-sm font-medium text-gray-300">
-        SELECT MODEL
-      </label>
-      <Combobox
-        bind:value={selectedModel}
-        items={modelItems}
-        loading={isLoadingModels}
-        disabled={!selectedProvider || isLoadingModels}
-        loadingText="Loading models..."
-        placeholder={selectedProvider ? 'Choose a model...' : 'Select a provider first'}
-      />
-    </div>
-
-    <div class="mb-4 w-full">
-      <label for="system-prompt-select" class="mb-2 block text-sm font-medium text-gray-300">
-        SYSTEM PROMPTS
-      </label>
-      <Select bind:value={selectedSystemPrompt} items={systemPromptItems} />
-    </div>
-
-    {#if selectedSystemPrompt === 'custom'}
-      <div class="mb-4 w-full">
-        <label for="custom-prompt" class="mb-2 block text-sm font-medium text-gray-300">
-          CUSTOM SYSTEM PROMPT
-        </label>
-        <Textarea
-          bind:value={customSystemPrompt}
-          placeholder="Enter a custom system prompt to override the default..."
-          class="min-h-[100px] w-full border-gray-800 bg-gray-900/80 text-white placeholder:text-gray-500 transition-all duration-300 focus-visible:border-white focus-visible:ring-white"
-        />
-        <p class="mt-1 text-xs text-gray-400">
-          Your custom prompt will be used for this generation and subsequent regenerations.
-        </p>
-      </div>
-    {/if}
-
-    <div class="mb-8 w-full">
-      <label for="max-tokens" class="mb-2 block text-sm font-medium text-gray-300">
-        MAX OUTPUT TOKENS
-      </label>
-      <div class="flex items-center gap-4">
-        <Input
-          id="max-tokens"
-          type="number"
-          value={maxTokens ?? ''}
-          oninput={onMaxTokensInput}
-          placeholder="Default (model dependent)"
-          class="w-full border-gray-800 bg-gray-900/80 text-white placeholder:text-gray-500 transition-all duration-300 focus-visible:border-white focus-visible:ring-white"
-          min="100"
-          step="100"
-        />
-        <Button
-          variant="outline"
-          onclick={() => (maxTokens = undefined)}
-          class="border-gray-800 text-gray-300 hover:bg-gray-800"
+    <main class="flex flex-1 flex-col items-center px-4 pb-28 pt-16 sm:px-12 sm:pt-[4vh]">
+      <div class="flex flex-col items-center gap-[18px] text-center animate-in fade-in-0 slide-in-from-bottom-2 duration-700">
+        <span
+          class="inline-flex h-[30px] items-center gap-2.5 rounded-full border border-moon/[0.12] bg-moon/[0.04] pl-2.5 pr-3.5 text-[12.5px] text-star-2 backdrop-blur"
         >
-          Reset
-        </Button>
+          <MoonPhase phase={providerStatus === 'loading' ? 'waxing' : providerStatus === 'error' ? 'new' : 'half'} size={14} />
+          {#if !providerInfo}
+            Looking for providers…
+          {:else if providerStatus === 'error'}
+            {providerInfo.name} is asleep — pick another provider with @
+          {:else if providerInfo.isLocal}
+            {modelCount ? `${modelCount} models on this machine` : `Waking ${providerInfo.name}…`} · nothing leaves it
+          {:else}
+            Generating with {providerInfo.name} · cloud
+          {/if}
+        </span>
+        <h1 class="text-[40px] font-light leading-[1.04] tracking-[-0.035em] sm:text-[64px]">
+          What are we<br />
+          <span class="text-moonlit font-serif text-[52px] font-normal italic tracking-[-0.01em] sm:text-[84px]">
+            building {timeOfDay}?
+          </span>
+        </h1>
       </div>
-      <p class="mt-1 text-xs text-gray-400">
-        Set the maximum number of tokens for the model output. Higher values allow for longer code
-        generation but may take more time. Leave empty to use the model's default.
-      </p>
-    </div>
+
+      <div class="mt-9 w-full max-w-[800px] animate-in fade-in-0 slide-in-from-bottom-3 duration-700">
+        <PromptPalette
+          bind:this={palette}
+          bind:prompt
+          bind:provider={selectedProvider}
+          bind:model={selectedModel}
+          bind:systemPrompt={selectedSystemPrompt}
+          bind:customSystemPrompt
+          bind:maxTokens
+          {onGenerate}
+        />
+      </div>
+
+      <div class="mt-4 grid w-full max-w-[800px] gap-3 sm:grid-cols-3">
+        {#each starters as s (s.name)}
+          <button
+            type="button"
+            onclick={() => useStarter(s.prompt)}
+            class="flex items-center gap-3 rounded-[14px] border border-moon/[0.08] bg-night-800/60 p-2.5 text-left backdrop-blur transition-colors hover:border-moon/[0.16] hover:bg-night-700/70"
+          >
+            <span class="h-10 w-14 shrink-0 rounded-[7px] shadow-[inset_0_0_0_1px_rgba(255,255,255,.06)]" style="background: {s.thumb}"></span>
+            <span class="flex flex-col gap-0.5">
+              <span class="text-[13px] text-star">{s.name}</span>
+              <span class="text-[11.5px] text-star-dim">{s.hint}</span>
+            </span>
+          </button>
+        {/each}
+      </div>
+    </main>
+
+    <footer class="pointer-events-none absolute inset-x-0 bottom-6 hidden justify-center gap-5 text-[12px] text-star-dim sm:flex lg:pl-[282px]">
+      <span class="flex items-center gap-1.5"><Kbd>@</Kbd> provider &amp; model</span>
+      <span class="flex items-center gap-1.5"><Kbd>{mod}↵</Kbd> generate</span>
+      <span class="flex items-center gap-1.5"><Kbd>esc</Kbd> close menus</span>
+    </footer>
   </div>
 </div>

@@ -11,15 +11,15 @@
   let { variant = 'default', class: className = '', children }: Props = $props();
 
   const variants = {
-    default: 'border-transparent bg-primary text-primary-foreground',
-    outline: 'text-foreground',
-    secondary: 'border-transparent bg-secondary text-secondary-foreground'
+    default: 'border-transparent bg-moon text-night-900',
+    outline: 'border-moon/15 text-star-2',
+    secondary: 'border-transparent bg-moon/10 text-star'
   };
 </script>
 
 <span
   class={cn(
-    'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors',
+    'inline-flex items-center rounded-full border px-2.5 py-0.5 font-mono text-[11px] transition-colors',
     variants[variant],
     className
   )}

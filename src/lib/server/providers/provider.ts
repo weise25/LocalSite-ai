@@ -21,9 +21,20 @@ import {
 } from "./config";
 import { DEFAULT_SYSTEM_PROMPT } from "./prompts";
 
+// Model metadata returned to the client. Size/parameter/quantization details
+// are only known for providers that report them (currently Ollama).
+export interface ModelInfo {
+  id: string;
+  name: string;
+  size?: number;
+  parameterSize?: string;
+  quantization?: string;
+  family?: string;
+}
+
 // Common interface for all providers
 export interface LLMProviderClient {
-  getModels: () => Promise<{ id: string; name: string }[]>;
+  getModels: () => Promise<ModelInfo[]>;
   getModel: (modelId: string) => LanguageModel;
 }
 
@@ -412,9 +423,23 @@ class OllamaProviderClient implements LLMProviderClient {
 
       const data = await response.json();
       return data.models
-        ? data.models.map((model: { name: string }) => ({
+        ? data.models.map((
+          model: {
+            name: string;
+            size?: number;
+            details?: {
+              parameter_size?: string;
+              quantization_level?: string;
+              family?: string;
+            };
+          },
+        ): ModelInfo => ({
           id: model.name,
           name: model.name,
+          size: typeof model.size === "number" ? model.size : undefined,
+          parameterSize: model.details?.parameter_size || undefined,
+          quantization: model.details?.quantization_level || undefined,
+          family: model.details?.family || undefined,
         }))
         : [];
     } catch (error) {

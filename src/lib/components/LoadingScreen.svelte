@@ -1,31 +1,12 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-
-  let glitchClass = $state('');
-
-  onMount(() => {
-    let glitchTimeout: ReturnType<typeof setTimeout> | undefined;
-    const glitchInterval = setInterval(() => {
-      glitchClass = 'glitch';
-      glitchTimeout = setTimeout(() => (glitchClass = ''), 200);
-    }, 2000);
-
-    return () => {
-      clearInterval(glitchInterval);
-      clearTimeout(glitchTimeout);
-    };
-  });
+  import NightSky from '$lib/components/night/NightSky.svelte';
+  import MoonLogo from '$lib/components/night/MoonLogo.svelte';
 </script>
 
-<div class="fixed inset-0 flex flex-col items-center justify-center bg-black">
-  <h1
-    class="mb-8 text-4xl font-bold tracking-wider text-white md:text-6xl {glitchClass}"
-    style="font-family: 'Space Mono', monospace"
-  >
-    LOADING, PLEASE WAIT...
-  </h1>
-
-  <div class="relative flex h-24 w-24 items-center justify-center">
-    <div class="h-20 w-20 animate-spin rounded-full border-4 border-gray-600 border-t-white"></div>
+<div class="fixed inset-0 flex flex-col items-center justify-center gap-5 bg-night-950" role="status" aria-live="polite">
+  <NightSky variant="quiet" />
+  <div class="relative motion-safe:animate-moon-breathe">
+    <MoonLogo size={56} />
   </div>
+  <p class="relative font-serif text-[22px] italic text-star-2">Waiting for the night sky…</p>
 </div>
